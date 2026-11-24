@@ -21,11 +21,12 @@ const money = v => v>=1000 ? '$'+(v/1000).toFixed(v>=10000?0:1)+'K' : '$'+Math.r
 const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
 const personId = s => { if(!s) return null; const p=PEOPLE.find(x=>x.id.toLowerCase()===String(s).toLowerCase()); return p?p.id:String(s); };
 
-let D, PICKS={};
+let D, PICKS={}, LINKS={};
 try{
   const bust='?t='+Date.now();
   D = await (await fetch('data.json'+bust)).json();
   try{ PICKS = await (await fetch('picks.json'+bust)).json(); }catch(e){}
+  try{ LINKS = await (await fetch('links.json'+bust)).json(); }catch(e){}
 }catch(e){ $('#title').textContent='Scorecards'; $('#updated').textContent='Could not load data.json yet.'; return; }
 
 /* picks made on this page live in this browser until they are exported into picks.json */
@@ -112,6 +113,7 @@ function renderWinners(){
     return `<div class="ad ${attributedAd(a)?'ok':''}"><div class="body">
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${type}<span class="pill">${a.video?'Video':'Static'}</span></div>
       <div class="nm">${esc(a.name)}</div>
+      ${LINKS[a.name]?`<a class="watch" href="${esc(LINKS[a.name])}" target="_blank" rel="noopener">▶ Watch the ad</a>`:`<span class="watch off">No preview link yet</span>`}
       <div class="mx"><span>${a.r.toFixed(2)}<em>ROAS</em></span><span>${money(a.s)}<em>spend</em></span><span>${a.p}<em>purch</em></span>${h}</div>
       ${who}</div></div>`; }).join('') : '<p class="note">Nothing here for this period.</p>';
   const nLocal=Object.keys(LOCAL).length;
