@@ -11,6 +11,13 @@
 .ad{grid-template-columns:minmax(0,1fr)}
 .who{font-size:12px;color:var(--muted)}
 .updated{font-size:13px;color:var(--muted)}
+.picker{display:flex;gap:8px;flex-wrap:wrap}
+.pk{display:flex;align-items:center;gap:6px;font-family:var(--f-display);font-weight:700;font-size:14px}
+.pk select{font:500 14px var(--f-body,inherit);color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 8px;min-width:110px}
+.pk select:focus-visible{outline:2px solid var(--holo1);outline-offset:2px}
+.pktools{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:var(--panel);border:1px solid var(--mid);border-radius:12px;padding:10px 14px;margin-bottom:12px}
+.pktools[hidden]{display:none}
+.pkbtns{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
 </style>
 </head>
 <body>
@@ -63,6 +70,11 @@
       <div style="display:flex;gap:10px;align-items:center;flex:1;justify-content:flex-end;min-width:220px">
         <span class="note" id="pickCount"></span><div class="progress"><i id="pickBar"></i></div>
       </div>
+    </div>
+    <div class="pktools" id="pickTools" hidden>
+      <span class="note" id="localCount"></span>
+      <span class="note">They're saved in this browser and the cards already use them. To keep them for everyone, download or copy picks.json and send it to Claude.</span>
+      <div class="pkbtns"><button type="button" class="btn sm" id="copyBtn">Copy picks.json</button><button type="button" class="btn sm" id="exportBtn">Download</button><button type="button" class="btn sm" id="clearBtn">Clear</button></div>
     </div>
     <div class="wgrid" id="wgrid"></div>
   </section>

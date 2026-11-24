@@ -28,6 +28,15 @@ try{
   try{ PICKS = await (await fetch('picks.json'+bust)).json(); }catch(e){}
 }catch(e){ $('#title').textContent='Scorecards'; $('#updated').textContent='Could not load data.json yet.'; return; }
 
+/* picks made on this page live in this browser until they are exported into picks.json */
+const LKEY='lumeo-picks-v1';
+let LOCAL={}; try{ LOCAL=JSON.parse(localStorage.getItem(LKEY)||'{}')||{}; }catch(e){ LOCAL={}; }
+const saveLocal=()=>{ try{ localStorage.setItem(LKEY,JSON.stringify(LOCAL)); }catch(e){} };
+const pickFor=name=>LOCAL[name]||PICKS[name]||null;
+const CS_OPTS=['Victor','Joel','Richard','Alex','Other','Creator'];
+const ED_OPTS=['Hamid','Daly','techkidd','Eren','Joe','Other','Creator'];
+const toast=m=>{const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),2200);};
+
 const S = D.settings||{};
 const SPEND_LINE = S.spend_line||5000, KPI_MIN = S.kpi_min_purchases||3, FLOOR = S.profitable_roas||1.1;
 const ALLW = [...new Set((D.ad_weekly||[]).map(r=>r.week))].sort();
@@ -66,11 +75,11 @@ function adsFor(p){
         : (a.r>=bar && a.p>=KPI_MIN ? 'KPI Winner' : 'Loser');
     a.prof = a.r>=bar;
     const t = a.dct>=TRACK_FROM ? tasksByDct[a.dct] : null;
-    const pk = PICKS[a.name];
+    const pk = pickFor(a.name);
     a.task=t||null;
     a.cs = t ? personId(t.cs) : pk ? personId(pk.cs) : null;
     a.ed = t ? personId(t.editor) : pk ? personId(pk.ed) : null;
-    a.src = t ? 'ClickUp' : pk ? 'Manual pick' : null;
+    a.src = t ? 'ClickUp' : LOCAL[a.name] ? 'Picked here' : pk ? 'Manual pick' : null;
     a.unmatched = a.dct>=TRACK_FROM && !t;
   });
   list.sort((x,y)=>y.s-x.s);
@@ -95,16 +104,41 @@ function renderWinners(){
     `. ${n('Breakthrough')} Breakthrough, ${n('Spend Winner')} Spend Winner, ${n('KPI Winner')} KPI Winner, ${n('Too early')} too early.`;
   $('#wgrid').innerHTML = lst.length ? lst.map(a=>{
     const type=`<span class="pill ${VCLS[a.v]}">${a.v}</span>`+(a.v!=='Too early'?`<span class="pill ${a.prof?'prof':'unprof'}">${a.prof?'Profitable':'Unprofitable'}</span>`:'');
+    const sel=(role,opts,cur)=>`<label class="pk"><span>${role}</span><select data-ad="${esc(a.name)}" data-role="${role}"><option value="">Pick…</option>${opts.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('')}</select></label>`;
     const who = a.unmatched ? `<div class="flag">DCT ${a.dct} spent money but no ClickUp task has DCT # ${a.dct}. Check the ad name or the task.</div>`
-      : attributedAd(a) ? `<div class="owner"><span>CS ${esc(a.cs||'–')}</span><span>ED ${esc(a.ed||'–')}</span></div><div class="who">${a.task?`From ClickUp: <a href="${esc(a.task.url)}" target="_blank" rel="noopener">${esc(a.task.name)}</a>`:'Manual pick (picks.json)'}</div>`
-      : `<div class="note">Not attributed yet${a.dct&&a.dct<TRACK_FROM?' · older ad, add a manual pick':''}</div>`;
+      : a.task ? `<div class="owner"><span>CS ${esc(a.cs||'–')}</span><span>ED ${esc(a.ed||'–')}</span></div><div class="who">From ClickUp: <a href="${esc(a.task.url)}" target="_blank" rel="noopener">${esc(a.task.name)}</a></div>`
+      : `<div class="picker">${sel('CS',CS_OPTS,a.cs)}${sel('ED',ED_OPTS,a.ed)}</div><div class="who">${a.src==='Picked here'?'Picked on this page, not in picks.json yet':a.src==='Manual pick'?'Saved in picks.json':'Not attributed yet · choose who made it'}</div>`;
     const h=a.h>1?`<span>${a.h.toFixed(0)}%<em>hook</em></span>`:'';
     return `<div class="ad ${attributedAd(a)?'ok':''}"><div class="body">
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${type}<span class="pill">${a.video?'Video':'Static'}</span></div>
       <div class="nm">${esc(a.name)}</div>
       <div class="mx"><span>${a.r.toFixed(2)}<em>ROAS</em></span><span>${money(a.s)}<em>spend</em></span><span>${a.p}<em>purch</em></span>${h}</div>
       ${who}</div></div>`; }).join('') : '<p class="note">Nothing here for this period.</p>';
+  const nLocal=Object.keys(LOCAL).length;
+  $('#pickTools').hidden=!nLocal;
+  $('#localCount').textContent=nLocal?`${nLocal} pick${nLocal>1?'s':''} made on this page`:'';
 }
+$('#wgrid').addEventListener('change',e=>{
+  const el=e.target; if(!el.matches('select[data-ad]')) return;
+  const name=el.dataset.ad, cur=Object.assign({}, pickFor(name)||{});
+  if(el.dataset.role==='CS') cur.cs=el.value||undefined; else cur.ed=el.value||undefined;
+  if(!cur.cs) delete cur.cs; if(!cur.ed) delete cur.ed;
+  const saved=PICKS[name]||{};
+  if(cur.cs===saved.cs && cur.ed===saved.ed) delete LOCAL[name]; else LOCAL[name]=cur;
+  saveLocal(); Object.keys(cache).forEach(k=>delete cache[k]);
+  renderAll(); toast(`${name}: CS ${cur.cs||'–'}, ED ${cur.ed||'–'}. Cards updated.`);
+});
+function mergedPicks(){
+  const out=Object.assign({},PICKS);
+  Object.entries(LOCAL).forEach(([k,v])=>{ if(v.cs||v.ed) out[k]=v; else delete out[k]; });
+  return '{\n'+Object.keys(out).map(k=>'  '+JSON.stringify(k)+': '+JSON.stringify(out[k])).join(',\n')+'\n}\n';
+}
+$('#exportBtn').addEventListener('click',()=>{
+  const blob=new Blob([mergedPicks()],{type:'application/json'}), u=URL.createObjectURL(blob), l=document.createElement('a');
+  l.href=u; l.download='picks.json'; document.body.appendChild(l); l.click(); l.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000);
+});
+$('#copyBtn').addEventListener('click',async()=>{ try{ await navigator.clipboard.writeText(mergedPicks()); toast('picks.json copied. Paste it to Claude to save it for everyone.'); }catch(e){ toast('Copy failed. Use Download instead.'); } });
+$('#clearBtn').addEventListener('click',()=>{ LOCAL={}; saveLocal(); Object.keys(cache).forEach(k=>delete cache[k]); renderAll(); toast('Picks made on this page cleared.'); });
 
 /* ---------- production (ClickUp tasks) ---------- */
 const ts = v => v ? new Date(isNaN(+v)?v:+v) : null;
