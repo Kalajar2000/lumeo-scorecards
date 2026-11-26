@@ -54,7 +54,7 @@ const WIN = {
 let period='week', filter='all', wfilter='win';
 
 /* ---------- ads by window ---------- */
-const tasksByDct = {}; (D.tasks||[]).forEach(t=>{ if(t.dct && !tasksByDct[t.dct]) tasksByDct[t.dct]=t; });
+const tasksByDct = {}, dctCount = {}; (D.tasks||[]).forEach(t=>{ if(!t.dct) return; dctCount[t.dct]=(dctCount[t.dct]||0)+1; if(!tasksByDct[t.dct]) tasksByDct[t.dct]=t; });
 const firstSeen = {}; (D.ad_weekly||[]).forEach(r=>{ if(!firstSeen[r.ad]||r.week<firstSeen[r.ad]) firstSeen[r.ad]=r.week; });
 const cache = {};
 function adsFor(p){
@@ -79,12 +79,8 @@ function adsFor(p){
     const t0 = a.dct ? tasksByDct[a.dct] : null;
     const pk = pickFor(a.name);
     const tcs = t0 ? personId(t0.cs) : null, ted = t0 ? personId(t0.editor) : null;
-    // DCT numbers under 1000 were reused, so an older ad can share its number with a new brief.
-    // Only trust the match when the task is launched and the ad first spent no earlier than 2 weeks before that.
-    const live = t0 && (t0.launched || (/(launched|live|testing|winner|loser|fatigued|scaling|paused)/i.test(t0.status||'') && !/ready to launch/i.test(t0.status||'')));
-    const ref = t0 ? Number(t0.launched||t0.created||0) : 0, fs = Date.parse((firstSeen[a.name]||'')+'T00:00:00Z');
-    const same = live && ref && !isNaN(fs) && fs >= ref - 14*864e5;
-    const t = t0 && (a.dct>=TRACK_FROM || (same && (tcs || ted))) ? t0 : null;
+    // A DCT number shared by two or more ClickUp tasks is ambiguous, so it is skipped.
+    const t = t0 && (dctCount[a.dct]||0) < 2 && (a.dct>=TRACK_FROM || tcs || ted) ? t0 : null;
     a.task=t||null;
     a.cs = (t && tcs) || (pk ? personId(pk.cs) : null);
     a.ed = (t && ted) || (pk ? personId(pk.ed) : null);
