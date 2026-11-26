@@ -38,7 +38,7 @@
   <nav class="flow" aria-label="How the scorecards are made">
     <a class="step" href="#s1"><i>1</i><div><b>Production</b><span>ClickUp: what each person briefed and delivered</span></div></a>
     <a class="step" href="#s2"><i>2</i><div><b>Winners</b><span>Meta (VFO, Lumeo 2.0, Lumeo): verdict per ad</span></div></a>
-    <a class="step live" href="#s2"><i>3</i><div><b>Who made it</b><span id="flowPicks">From the ClickUp task, or a manual pick for older ads</span></div></a>
+    <a class="step live" href="#s2"><i>3</i><div><b>Who made it</b><span id="flowPicks">From the ClickUp task, matched by DCT number</span></div></a>
     <a class="step" href="#s4"><i>4</i><div><b>Cards</b><span>Ratings come from steps 1 to 3</span></div></a>
   </nav>
 
@@ -67,17 +67,12 @@
       <div class="tabs" role="group" aria-label="Show">
         <button type="button" class="tab" data-w="win" aria-pressed="true">Winners</button>
         <button type="button" class="tab" data-w="all" aria-pressed="false">All ads</button>
-        <button type="button" class="tab" data-w="todo" aria-pressed="false">Not attributed yet</button>
+        <button type="button" class="tab" data-w="todo" aria-pressed="false">No owner yet</button>
         <button type="button" class="tab" data-w="unm" aria-pressed="false">Unmatched</button>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex:1;justify-content:flex-end;min-width:220px">
         <span class="note" id="pickCount"></span><div class="progress"><i id="pickBar"></i></div>
       </div>
-    </div>
-    <div class="pktools" id="pickTools" hidden>
-      <span class="note" id="localCount"></span>
-      <span class="note">They're saved in this browser and the cards already use them. To keep them for everyone, download or copy picks.json and send it to Claude.</span>
-      <div class="pkbtns"><button type="button" class="btn sm" id="copyBtn">Copy picks.json</button><button type="button" class="btn sm" id="exportBtn">Download</button><button type="button" class="btn sm" id="clearBtn">Clear</button></div>
     </div>
     <div class="wgrid" id="wgrid"></div>
   </section>
