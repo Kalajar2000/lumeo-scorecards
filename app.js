@@ -1,7 +1,7 @@
 /* Lumeo scorecards. Reads data.json (written every Monday by Make) and picks.json (manual attribution).
    One rule set, three windows: Week (last Mon-Sun), Month (calendar month of last week), Lifetime. */
 (async function(){
-const TRACK_FROM = 1000;      // DCT # from which attribution comes from the ClickUp task (CS / Editor fields)
+const TRACK_FROM = 1000;      // DCT # from which an ad with no ClickUp task is flagged as unmatched. Attribution uses the ClickUp task for any DCT that has one.
 const EARLY_SHARE = 0.03;     // too early: first seen in the window's last week and under 3% of the window's spend
 const PEOPLE = [
   {id:'Hamid',name:'hamid',ini:'HA',role:'ED',roleName:'Editor',img:'avatars/hamid.webp'},
@@ -54,7 +54,7 @@ const WIN = {
 let period='week', filter='all', wfilter='win';
 
 /* ---------- ads by window ---------- */
-const tasksByDct = {}; (D.tasks||[]).forEach(t=>{ if(t.dct && !tasksByDct[t.dct]) tasksByDct[t.dct]=t; });
+const tasksByDct = {}, dctCount = {}; (D.tasks||[]).forEach(t=>{ if(!t.dct) return; dctCount[t.dct]=(dctCount[t.dct]||0)+1; if(!tasksByDct[t.dct]) tasksByDct[t.dct]=t; });
 const firstSeen = {}; (D.ad_weekly||[]).forEach(r=>{ if(!firstSeen[r.ad]||r.week<firstSeen[r.ad]) firstSeen[r.ad]=r.week; });
 const cache = {};
 function adsFor(p){
@@ -75,11 +75,15 @@ function adsFor(p){
         : a.s>=SPEND_LINE ? (a.r>=bar?'Breakthrough':a.r>=1?'Spend Winner':'Loser')
         : (a.r>=bar && a.p>=KPI_MIN ? 'KPI Winner' : 'Loser');
     a.prof = a.r>=bar;
-    const t = a.dct>=TRACK_FROM ? tasksByDct[a.dct] : null;
+    // Any ad whose DCT has a ClickUp task takes CS / Editor from that task. Picks fill whatever the task leaves empty.
+    const t0 = a.dct ? tasksByDct[a.dct] : null;
     const pk = pickFor(a.name);
+    const tcs = t0 ? personId(t0.cs) : null, ted = t0 ? personId(t0.editor) : null;
+    // A DCT number shared by two or more ClickUp tasks is ambiguous, so it is skipped.
+    const t = t0 && (dctCount[a.dct]||0) < 2 && (a.dct>=TRACK_FROM || tcs || ted) ? t0 : null;
     a.task=t||null;
-    a.cs = t ? personId(t.cs) : pk ? personId(pk.cs) : null;
-    a.ed = t ? personId(t.editor) : pk ? personId(pk.ed) : null;
+    a.cs = (t && tcs) || (pk ? personId(pk.cs) : null);
+    a.ed = (t && ted) || (pk ? personId(pk.ed) : null);
     a.src = t ? 'ClickUp' : LOCAL[a.name] ? 'Picked here' : pk ? 'Manual pick' : null;
     a.unmatched = a.dct>=TRACK_FROM && !t;
   });
