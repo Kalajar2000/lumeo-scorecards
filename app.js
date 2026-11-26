@@ -268,7 +268,8 @@ function renderAll(){
   $('#rulesLegend').innerHTML=`<b>Verdicts</b> Breakthrough = $${SPEND_LINE/1000}K+ spend and ROAS at or above the bar · Spend Winner = $${SPEND_LINE/1000}K+ spend, ROAS 1.0 to the bar · KPI Winner = under $${SPEND_LINE/1000}K, ROAS at or above the bar, ${KPI_MIN}+ purchases · Too early = first seen in the last week and under 3% of the window's spend · Loser = the rest. Bar = blended ROAS of the top 20 ads in the window, never under ${FLOOR.toFixed(1)}`;
   renderProd(); renderWinners(); renderCards();
 }
-$('#updated').textContent='Data updated '+new Date(D.generated_at).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'})+'. Updates every Monday.';
+const PART=(D.weeks||[]).find(w=>w.week===LAST&&w.partial_through);
+$('#updated').textContent='Data updated '+new Date(D.generated_at).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'})+'.'+(PART?` This week is partial (Mon ${LAST.slice(8)} to ${PART.partial_through.slice(8)} Nov so far).`:'')+' Updates every Monday.';
 document.querySelectorAll('[data-f]').forEach(t=>t.addEventListener('click',()=>{filter=t.dataset.f;document.querySelectorAll('[data-f]').forEach(x=>x.setAttribute('aria-pressed',String(x===t)));renderCards();}));
 document.querySelectorAll('[data-w]').forEach(t=>t.addEventListener('click',()=>{wfilter=t.dataset.w;document.querySelectorAll('[data-w]').forEach(x=>x.setAttribute('aria-pressed',String(x===t)));renderWinners();}));
 document.querySelectorAll('.seg button').forEach(t=>{t.textContent=WIN[t.dataset.p].label;t.addEventListener('click',()=>{period=t.dataset.p;document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',String(x===t)));renderAll();});});
