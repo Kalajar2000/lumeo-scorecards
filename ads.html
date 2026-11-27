@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lumeo ads source of truth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="ads.css">
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Lumeo · every ad we ran</div>
+      <h1>Ads source of truth</h1>
+      <p class="sub" id="lede">Loading…</p>
+    </div>
+    <a class="btn sm" href="./">Weekly scorecards →</a>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section id="tried">
+    <h2><span class="num">1</span>What we've tried, and what worked</h2>
+    <p class="sub">One row per angle, format and avatar. "Concepts" counts each creative idea once (all its hooks, versions and copies together). Hit rate = concepts that became a winner ÷ concepts that got at least $<span class="mintest">100</span> of spend.</p>
+    <div class="seg" role="group" aria-label="Group by" id="dimseg">
+      <button aria-pressed="true" data-dim="angle">Angle</button>
+      <button aria-pressed="false" data-dim="format">Format</button>
+      <button aria-pressed="false" data-dim="avatar">Avatar</button>
+    </div>
+    <div class="box tblwrap"><table id="dimtbl"></table></div>
+  </section>
+
+  <section id="matrix">
+    <h2><span class="num">2</span>Angle × format</h2>
+    <p class="sub">Each cell = concepts tried / winners. Brighter cell = more winners. Empty = never tried, which is where the untested combos are.</p>
+    <div class="box tblwrap"><table id="mtx" class="mtx"></table></div>
+  </section>
+
+  <section id="winners">
+    <h2><span class="num">3</span>The winners</h2>
+    <p class="sub" id="winsub"></p>
+    <div class="wins" id="wins"></div>
+  </section>
+
+  <section id="all">
+    <h2><span class="num">4</span>Every concept</h2>
+    <div class="filters">
+      <input type="search" id="q" placeholder="Search name, DCT, CS, editor…" aria-label="Search">
+      <select id="fAngle" aria-label="Angle"></select>
+      <select id="fFormat" aria-label="Format"></select>
+      <select id="fAvatar" aria-label="Avatar"></select>
+      <select id="fVerdict" aria-label="Verdict"></select>
+    </div>
+    <p class="sub" id="allsub"></p>
+    <div class="box tblwrap"><table id="alltbl" class="sortable"></table></div>
+    <button class="btn sm" id="more" hidden>Show more</button>
+  </section>
+
+  <section id="months">
+    <h2><span class="num">5</span>Spend by month</h2>
+    <div class="box"><div class="mbars" id="mbars"></div></div>
+  </section>
+
+  <section id="how">
+    <h2><span class="num">6</span>How this is built</h2>
+    <div class="box how" id="howbox"></div>
+  </section>
+</main>
+<script src="ads.js"></script>
+</body>
+</html>
