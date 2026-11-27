@@ -50,11 +50,11 @@ const LAST = D.last_week || ALLW[ALLW.length-1];
 const DATA_START = ALLW[0];
 const isoWeek = d => { const t=new Date(d+'T00:00:00Z'); t.setUTCDate(t.getUTCDate()+4-(t.getUTCDay()||7)); const y=new Date(Date.UTC(t.getUTCFullYear(),0,1)); return Math.ceil(((t-y)/864e5+1)/7); };
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
-const MON_OF = w => w.slice(0,7);   // a week belongs to the month its Monday falls in
-const ALLM = [...new Set(ALLW.map(MON_OF))].sort();
 const PARTIAL = new Set((D.weeks||[]).filter(w=>w.partial_through).map(w=>w.week));
 const fmtD = d => new Date(d+'T00:00:00Z').toLocaleDateString(undefined,{month:'short',day:'numeric',timeZone:'UTC'});
 const addD = (d,n) => { const t=new Date(d+'T00:00:00Z'); t.setUTCDate(t.getUTCDate()+n); return t.toISOString().slice(0,10); };
+const MON_OF = w => addD(w,3).slice(0,7);   // a week belongs to the month its Thursday falls in (same rule as ISO weeks)
+const ALLM = [...new Set(ALLW.map(MON_OF))].sort();
 /* Every week, month and Lifetime in data.json gets its own view. Keys: "w:2026-11-23", "m:2026-11", "life". Built from the data, so new weeks show up on their own. */
 const WINC = {};
 function winFor(key){
