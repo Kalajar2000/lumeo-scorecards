@@ -50,13 +50,25 @@ const LAST = D.last_week || ALLW[ALLW.length-1];
 const DATA_START = ALLW[0];
 const isoWeek = d => { const t=new Date(d+'T00:00:00Z'); t.setUTCDate(t.getUTCDate()+4-(t.getUTCDay()||7)); const y=new Date(Date.UTC(t.getUTCFullYear(),0,1)); return Math.ceil(((t-y)/864e5+1)/7); };
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
-const lastMonth = LAST ? LAST.slice(0,7) : '';
-const WIN = {
-  week:{weeks:ALLW.filter(w=>w===LAST), label:'Week '+(LAST?isoWeek(LAST):''), tag:'POTW', special:'Player of the Week', pack:'WEEK '+(LAST?isoWeek(LAST):'')},
-  month:{weeks:ALLW.filter(w=>w.slice(0,7)===lastMonth), label:LAST?MONTHS[+lastMonth.slice(5)-1]:'Month', tag:'POTM', special:'Player of the Month', pack:'MONTH'},
-  life:{weeks:ALLW, label:'Lifetime', tag:'GOAT', special:'Best overall', pack:'LIFETIME'}
-};
-let period='week', filter='all';
+const PARTIAL = new Set((D.weeks||[]).filter(w=>w.partial_through).map(w=>w.week));
+const fmtD = d => new Date(d+'T00:00:00Z').toLocaleDateString(undefined,{month:'short',day:'numeric',timeZone:'UTC'});
+const addD = (d,n) => { const t=new Date(d+'T00:00:00Z'); t.setUTCDate(t.getUTCDate()+n); return t.toISOString().slice(0,10); };
+const MON_OF = w => addD(w,3).slice(0,7);   // a week belongs to the month its Thursday falls in (same rule as ISO weeks)
+const ALLM = [...new Set(ALLW.map(MON_OF))].sort();
+/* Every week, month and Lifetime in data.json gets its own view. Keys: "w:2026-11-23", "m:2026-11", "life". Built from the data, so new weeks show up on their own. */
+const WINC = {};
+function winFor(key){
+  if(WINC[key]) return WINC[key];
+  let w;
+  if(key==='life') w={kind:'life',weeks:ALLW,label:'Lifetime',tag:'GOAT',special:'Best overall',pack:'LIFETIME'};
+  else if(key.startsWith('m:')){ const m=key.slice(2); w={kind:'month',weeks:ALLW.filter(x=>MON_OF(x)===m),label:MONTHS[+m.slice(5)-1]+(m.slice(0,4)!==String(new Date().getFullYear())?' '+m.slice(0,4):''),tag:'POTM',special:'Player of the Month',pack:MONTHS[+m.slice(5)-1].toUpperCase()}; }
+  else { const d=key.slice(2), n=isoWeek(d); w={kind:'week',weeks:ALLW.filter(x=>x===d),label:'Week '+n,tag:'POTW',special:'Player of the Week',pack:'WEEK '+n}; }
+  return WINC[key]=w;
+}
+const WIN = new Proxy({}, {get:(_,k)=>winFor(k)});
+const DEFAULT = {week:'w:'+LAST, month:'m:'+(LAST?MON_OF(LAST):''), life:'life'};
+let period=DEFAULT.week, filter='all';
+const K = () => winFor(period).kind;
 
 /* ---------- ads by window ---------- */
 const tasksByDct = {}, dctCount = {}; (D.tasks||[]).forEach(t=>{ if(!t.dct) return; dctCount[t.dct]=(dctCount[t.dct]||0)+1; if(!tasksByDct[t.dct]) tasksByDct[t.dct]=t; });
@@ -105,7 +117,7 @@ const attributedAd = a => !!(a.cs||a.ed);
 
 
 function renderWinners(){
-  const {list,full,tot,bar,raw}=W(), N=TOP_N[period]||9;
+  const {list,full,tot,bar,raw}=W(), N=TOP_N[K()]||9;
   const done=list.filter(a=>a.cs&&a.ed).length;
   $('#pickCount').textContent=`${done} of ${list.length} ads fully credited`;
   $('#pickBar').style.width=list.length?(100*done/list.length)+'%':'0';
@@ -170,7 +182,7 @@ $('#wgrid').addEventListener('change',async e=>{
 const ts = v => v ? new Date(isNaN(+v)?v:+v) : null;
 function windowRange(){ const w=WIN[period].weeks; if(!w.length) return [0,0];
   const a=new Date(w[0]+'T00:00:00Z'), b=new Date(w[w.length-1]+'T00:00:00Z'); b.setUTCDate(b.getUTCDate()+7);
-  return period==='life'?[new Date(0),b]:[a,b]; }
+  return K()==='life'?[new Date(0),b]:[a,b]; }
 function prod(){
   const [a,b]=windowRange(), inW=d=>d&&d>=a&&d<b, E={}, C={};
   (D.tasks||[]).forEach(t=>{
@@ -194,7 +206,7 @@ function renderProd(){
 const attributed = (id,role) => W().list.filter(a=>(role==='CS'?a.cs:a.ed)===id);
 const wavg=(l,f,w)=>{let s=0,t=0;l.forEach(a=>{const v=f(a),x=w(a);if(v!=null){s+=v*x;t+=x;}});return t?s/t:null;};
 function statsFor(p){
-  const wk=period==='week', mine=attributed(p.id,p.role), {tot,list}=W(), P=prod();
+  const wk=K()==='week', mine=attributed(p.id,p.role), {tot,list}=W(), P=prod();
   const spend=mine.reduce((t,a)=>t+a.s,0);
   const judged=mine.filter(a=>a.v!=='Too early').length;
   const nBT=mine.filter(a=>a.v==='Breakthrough').length, nSW=mine.filter(a=>a.v==='Spend Winner').length, nKPI=mine.filter(a=>a.v==='KPI Winner').length;
@@ -204,7 +216,7 @@ function statsFor(p){
   const hook=wavg(vids,a=>a.h,a=>a.s), hold=wavg(vids,a=>a.hd>0?a.hd:null,a=>a.s);
   const roas=spend?mine.reduce((t,a)=>t+a.rev,0)/spend:null, share=tot?100*spend/tot:0;
   const has=mine.length>0||list.some(attributedAd);
-  const S=[], sc=period==='life'?0.5:period==='month'?1:2;
+  const S=[], sc=K()==='life'?0.5:K()==='month'?1:2;
   if(p.role==='ED'){ const v=P.E[p.id];
     S.push(['VOL', v?clamp(Math.round(50+3.5*sc*v.delivered),35,99):null, v?`${v.delivered} ads delivered`:'no ClickUp tasks yet']);
     S.push(['FIN', v&&v.fin!=null?clamp(Math.round(99-5*v.fin),40,95):null, v&&v.fin!=null?`${v.fin.toFixed(1)} days to final`:'no Final dates yet']);
@@ -215,7 +227,7 @@ function statsFor(p){
   const noAttr=has?'no judged ads yet':'no attributed ads yet';
   S.push(['HIT', hitPct!=null?clamp(Math.round(45+1.4*hitPct),35,99):null, hitPct!=null?`${hitPct.toFixed(0)}% hit rate · ${nBT+nSW} of ${judged}`:noAttr]);
   S.push(['KPI', kpiPct!=null?clamp(Math.round(45+0.8*kpiPct),35,99):null, kpiPct!=null?`${kpiPct.toFixed(0)}% KPI hit rate · ${nKPI} of ${judged}`:noAttr]);
-  S.push(['BRK', has?clamp(Math.round((wk?55:50)+(wk?20:period==='month'?12:6)*nBT),40,99):null, has?`${nBT} breakthrough${nBT===1?'':'s'}`:noAttr]);
+  S.push(['BRK', has?clamp(Math.round((wk?55:50)+(wk?20:K()==='month'?12:6)*nBT),40,99):null, has?`${nBT} breakthrough${nBT===1?'':'s'}`:noAttr]);
   if(p.role==='ED'){
     S.push(['HOOK', hook!=null?clamp(Math.round(30+1.15*hook),35,99):null, hook!=null?`${hook.toFixed(0)}% hook rate (videos)`:'no attributed videos']);
     S.push(['HOLD', hold!=null?clamp(Math.round(40+2*hold),35,99):null, hold!=null?`${hold.toFixed(0)}% hold rate`:'no attributed videos','back']);
@@ -230,7 +242,7 @@ function statsFor(p){
 const baseOvr=p=>{const v=statsFor(p).S.filter(s=>s[3]!=='back').map(s=>s[1]).filter(x=>x!=null);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):0;};
 const visiblePeople=()=>PEOPLE.filter(p=>!p.onlyIfAds||attributed(p.id,p.role).length);
 const special=()=>{const vp=visiblePeople();return vp.reduce((b,p)=>baseOvr(p)>baseOvr(b)?p:b,vp[0]);};
-const boost=p=>(period==='week'&&p===special())?3:0;
+const boost=p=>(K()==='week'&&p===special())?3:0;
 const ovrOf=p=>Math.min(99,baseOvr(p)+boost(p));
 const tierOf=p=>p===special()?'t-special':(ovrOf(p)>=75?'t-gold':ovrOf(p)>=65?'t-silver':'t-bronze');
 const colorOf=v=>v>=80?'var(--good)':v>=68?'var(--mid)':'var(--low)';
@@ -278,7 +290,7 @@ function wire(root){
 }
 function renderCards(){
   $('#title').textContent=WIN[period].label+' scorecards';
-  $('#specialLabel').textContent=WIN[period].tag+' = '+WIN[period].special+(period==='week'?', top rating gets +3':'');
+  $('#specialLabel').textContent=WIN[period].tag+' = '+WIN[period].special+(K()==='week'?', top rating gets +3':'');
   $('#packSub').textContent=WIN[period].pack+' PACK';
   const list=visiblePeople().slice().sort((a,b)=>ovrOf(b)-ovrOf(a)).filter(p=>filter==='all'||p.role===filter);
   $('#squad').innerHTML=list.map(p=>'<div class="slot">'+cardHTML(p)+'<span class="tap">Tap card for breakdown</span>'+bestWorst(p)+adHTML(p)+'</div>').join('');
@@ -288,15 +300,30 @@ function renderCards(){
 }
 function renderAll(){
   const w=WIN[period].weeks;
-  $('#periodNote').textContent=w.length?(period==='week'?`Meta: week of ${w[0]}`:`Meta: ${w.length} week${w.length>1?'s':''}, ${w[0]} to ${w[w.length-1]}`):'No Meta data yet';
+  $('#periodNote').textContent=w.length?(K()==='week'?`Meta: week of ${w[0]}`:`Meta: ${w.length} week${w.length>1?'s':''}, ${w[0]} to ${w[w.length-1]}`):'No Meta data yet';
   $('#rulesLegend').innerHTML=`<b>Verdicts</b> Breakthrough = $${SPEND_LINE/1000}K+ spend and ROAS at or above the bar · Spend Winner = $${SPEND_LINE/1000}K+ spend, ROAS 1.0 to the bar · KPI Winner = under $${SPEND_LINE/1000}K, ROAS at or above the bar, ${KPI_MIN}+ purchases · Too early = first seen in the last week and under 3% of the window's spend · Loser = the rest. Bar = blended ROAS of the top 20 ads in the window, never under ${FLOOR.toFixed(1)}`;
   renderProd(); renderWinners(); renderCards();
 }
 const PART=(D.weeks||[]).find(w=>w.week===LAST&&w.partial_through);
-$('#updated').textContent='Data updated '+new Date(D.generated_at).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'})+'.'+(PART?` This week is partial (Mon ${LAST.slice(8)} to ${PART.partial_through.slice(8)} Nov so far).`:'')+' Updates every Monday.';
+$('#updated').textContent='Data updated '+new Date(D.generated_at).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'})+'.'+(PART?` Week ${isoWeek(LAST)} is partial (${fmtD(LAST)} to ${fmtD(PART.partial_through)} so far).`:'')+' Updates every Monday.';
 document.querySelectorAll('[data-f]').forEach(t=>t.addEventListener('click',()=>{filter=t.dataset.f;document.querySelectorAll('[data-f]').forEach(x=>x.setAttribute('aria-pressed',String(x===t)));renderCards();}));
-document.querySelectorAll('.seg button').forEach(t=>{t.textContent=WIN[t.dataset.p].label;t.addEventListener('click',()=>{period=t.dataset.p;document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',String(x===t)));renderAll();});});
-renderAll();
+const pickSel=$('#periodPick');
+function fillPick(){ const k=K();
+  if(k==='life'){ pickSel.hidden=true; return; }
+  pickSel.hidden=false;
+  const opts = k==='week' ? ALLW.slice().reverse().map(w=>[`w:${w}`,`Week ${isoWeek(w)} · ${fmtD(w)} to ${fmtD(addD(w,6))}${PARTIAL.has(w)?' (so far)':''}`])
+                          : ALLM.slice().reverse().map(m=>[`m:${m}`,winFor('m:'+m).label+` · ${ALLW.filter(x=>MON_OF(x)===m).length} wk`]);
+  pickSel.innerHTML=opts.map(([v,l])=>`<option value="${v}"${v===period?' selected':''}>${esc(l)}</option>`).join('');
+}
+function setPeriod(key){ period=key; const k=K();
+  document.querySelectorAll('.seg button').forEach(x=>{ x.setAttribute('aria-pressed',String(x.dataset.p===k)); x.textContent=x.dataset.p===k?winFor(period).label:({week:'Week',month:'Month',life:'Lifetime'})[x.dataset.p]; });
+  fillPick(); try{ const u=new URL(location.href); u.searchParams.set('p',period); history.replaceState(null,'',u); }catch(e){}
+  renderAll(); }
+document.querySelectorAll('.seg button').forEach(t=>t.addEventListener('click',()=>{ const k=t.dataset.p; setPeriod(K()===k?period:DEFAULT[k]); }));
+pickSel.addEventListener('change',()=>setPeriod(pickSel.value));
+const fromHash=new URLSearchParams(location.search).get('p')||'';
+period = (fromHash==='life' || (fromHash.startsWith('w:')&&ALLW.includes(fromHash.slice(2))) || (fromHash.startsWith('m:')&&ALLM.includes(fromHash.slice(2)))) ? fromHash : DEFAULT.week;
+setPeriod(period);
 
 /* ---------- pack opening ---------- */
 const ov=$('#ov'),pack=$('#pack'),land=$('#land'),wRole=$('#wRole'),wOvr=$('#wOvr'),controls=$('#controls'),counter=$('#counter'),nextBtn=$('#nextBtn'),doneBtn=$('#doneBtn');
