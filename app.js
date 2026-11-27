@@ -46,7 +46,10 @@ const mediaFor=name=>{ const m=MEDIA[name]||{}; return {preview:m.preview||LINKS
 const toast=m=>{const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),2200);};
 
 const S = D.settings||{};
-const SPEND_LINE = S.spend_line||5000, KPI_MIN = S.kpi_min_purchases||3, FLOOR = S.profitable_roas||1.1;
+/* IDGAF verdicts (Joel's doc). Same rules and numbers as the ads site (lumeo-ads-lab-log tools/ads/build.py verdict()),
+   so the scorecard, ClickUp and the MER label an ad the same way. The ad gets its concept's verdict. */
+const KPI_ROAS = 1.1, SHARE_LINE = 0.10;
+const IDG = {BAR:1.1, SHARE:0.10, GROWTH:0.10, MIN_WEEK:500, MIN_TEST:100, KPI_MIN_PUR:3};
 const ALLW = [...new Set((D.ad_weekly||[]).map(r=>r.week))].sort();
 const isoWeek = d => { const t=new Date(d+'T00:00:00Z'); t.setUTCDate(t.getUTCDate()+4-(t.getUTCDay()||7)); const y=new Date(Date.UTC(t.getUTCFullYear(),0,1)); return Math.ceil(((t-y)/864e5+1)/7); };
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -105,6 +108,65 @@ const firstSeen = {}, seen=(n,d)=>{ if(!firstSeen[n]||d<firstSeen[n]) firstSeen[
 DAYS.forEach(d=>DAILY.days[d].forEach(r=>seen(DAILY.ads[r[0]],d)));
 const dctOf = {}; (D.ad_weekly||[]).forEach(r=>{ if(r.dct) dctOf[r.ad]=r.dct; });
 const parseDct = n => { const m=String(n).match(/DCT\s*#?\s*(\d{1,4})/i)||String(n).match(/(?:^|\D)(\d{1,3})(?:\D|$)/); return m?Number(m[1]):''; };
+/* Concept key: same grouping as build.py concept_key(). */
+function conceptKey(name){
+  const n=String(name||'').trim(); let m;
+  if(/^(.*?)_Lumeo®.*trybe/.test(n)||n.includes('trybe=')) return 'Creator: '+n.split(/_Lumeo/)[0].trim();
+  const pad=v=>String(+v).padStart(3,'0');
+  if((m=n.match(/^SAN_W\d+_DCT(\d+)/))) return 'SAN-'+pad(m[1]);
+  if((m=n.match(/^W\d+_DCT(\d+)/))) return '#'+(+m[1]);
+  if((m=n.match(/CS-victor\s*\[DCT#?(\d+)/i))) return 'VS-'+pad(m[1]);
+  if((m=n.match(/^Alex_DCT#?(\d+)/i))) return 'ALEX-'+pad(m[1]);
+  if((m=n.match(/^BFCM#?(\d+)/i))) return 'BFCM-'+pad(m[1]);
+  if((m=n.match(/^TEMPLATE#\s*(\((\d+)\))?/i))) return 'TEMPLATE#'+(m[2]?' ('+m[2]+')':'');
+  if((m=n.match(/^JKX\s*(\d+)/i))) return 'JKX-'+(+m[1]);
+  if(/^SANTI?V?\d/i.test(n)) return 'SANTI';
+  if((m=n.match(/DCT\s*#?\s*(\d{1,4})/i))) return '#'+(+m[1]);
+  if((m=n.match(/^(?:ad|lumeos?#?|batch#?)\s*(\d{1,4})/i))) return '#'+(+m[1]);
+  if((m=n.match(/^(\d{1,4})(?!\d)/))) return '#'+(+m[1]);
+  let b=n.replace(/\s*-\s*Copy.*$/,'').replace(/\s*\(\d+\)$/,'').replace(/[\s_-]*(v|h)\d+\w*$/i,'').trim();
+  return b||n;
+}
+/* Monday-week spend and revenue for every concept and for the whole account, using everything up to date `to`.
+   Daily data where it exists, weekly rows before it. n = days of the week that have passed, so a week in progress
+   is compared on spend per day. */
+const SER = {};
+function seriesTo(to){
+  if(SER[to]) return SER[to];
+  const pool={}, con={}, add=(o,wk,s,r,n)=>{ const x=o[wk]||(o[wk]={s:0,r:0,n}); x.s+=s; x.r+=r; };
+  const nOf=wk=>span(wk,[addD(wk,6),to,THRU||to].sort()[0]);
+  (D.weeks||[]).forEach(x=>{ if(D0&&addD(x.week,6)>=D0) return; if(x.week>to) return; add(pool,x.week,x.spend,x.revenue,7); });
+  (D.ad_weekly||[]).forEach(r=>{ if(D0&&addD(r.week,6)>=D0) return; if(r.week>to) return; const k=conceptKey(r.ad); add(con[k]||(con[k]={}),r.week,r.spend,r.revenue,7); });
+  DAYS.forEach(d=>{ if(d>to) return; const wk=monOf(d), n=nOf(wk);
+    DAILY.days[d].forEach(r=>{ const k=conceptKey(DAILY.ads[r[0]]); add(pool,wk,r[1],r[2],n); add(con[k]||(con[k]={}),wk,r[1],r[2],n); }); });
+  return SER[to]={pool,con};
+}
+/* build.py verdict(), for the weeks that overlap the window. Share = concept spend / account spend that week.
+   Ref budget = account spend the week before the concept launched. Breakthrough = a week at 10%+ share and 1.1+ ROAS
+   where the account spends 10%+ more than the ref week and the concept spends more than in its launch week.
+   Spend winner = 10%+ share without that. KPI winner = under the line at 1.1+ ROAS with 3+ purchases. Loser = the rest. */
+function idgaf(key, w, tot){
+  const info={peak:0, bt:null, shareWeeks:0};
+  if(tot.s < IDG.MIN_TEST) return ['Too early',info];
+  const {pool,con}=seriesTo(w.to), cw=con[key]||{}, wks=Object.keys(cw).sort();
+  if(!wks.length) return ['Loser',info];
+  const lw=wks[0], l=cw[lw], lRate=l.s/l.n, prev=pool[addD(lw,-7)], hasPrev=!!prev&&prev.s>0;
+  const ref = hasPrev ? prev.s/prev.n : (pool[lw]?pool[lw].s/pool[lw].n:0);
+  const a=monOf(w.from), b=monOf(w.to);
+  wks.forEach(wk=>{
+    if(wk<a||wk>b) return;
+    const c=cw[wk], p=pool[wk]; if(!p||p.s<=0||c.s<IDG.MIN_WEEK*c.n/7) return;
+    const sh=c.s/p.s; if(sh>info.peak) info.peak=sh;
+    if(sh<IDG.SHARE) return;
+    info.shareWeeks++;
+    const ok = hasPrev ? (wk===lw || c.s/c.n>lRate) : (wk>lw && c.s/c.n>lRate);
+    if(ok && c.r/c.s>=IDG.BAR && ref>0 && p.s/p.n>=ref*(1+IDG.GROWTH) && !info.bt) info.bt=wk;
+  });
+  if(info.bt) return ['Breakthrough',info];
+  if(info.shareWeeks) return ['Spend Winner',info];
+  if(tot.s && tot.r/tot.s>=IDG.BAR && tot.p>=IDG.KPI_MIN_PUR) return ['KPI Winner',info];
+  return ['Loser',info];
+}
 /* Meta rows for a window: daily.json when it covers the window, otherwise the weekly rows in data.json. */
 function rowsFor(w){
   if(DAILY_OK(w.from)){ const out=[];
@@ -121,15 +183,15 @@ function adsFor(p){
     a.s+=r.spend; a.rev+=r.revenue; a.p+=r.purchases; a.imp+=r.imp; a.v3+=r.v3; a.tp+=r.tp; });
   const early=addD(w.to,-6);
   const list=Object.values(m).map(a=>({...a, r:a.s?a.rev/a.s:0, h:a.imp?100*a.v3/a.imp:0, hd:a.v3?100*a.tp/a.v3:0, video:a.v3>0}));
-  const tot=list.reduce((t,a)=>t+a.s,0);
-  const top=list.slice().sort((x,y)=>y.s-x.s).slice(0,20), ts=top.reduce((t,a)=>t+a.s,0);
-  const raw=ts?top.reduce((t,a)=>t+a.rev,0)/ts:FLOOR;
-  const bar=Math.max(raw,FLOOR);
+  const tot=list.reduce((t,a)=>t+a.s,0), bar=KPI_ROAS, CT={};
+  list.forEach(a=>{ a.concept=conceptKey(a.name); const c=CT[a.concept]||(CT[a.concept]={s:0,r:0,p:0}); c.s+=a.s; c.r+=a.rev; c.p+=a.p; });
+  const CV={}; Object.keys(CT).forEach(k=>CV[k]=idgaf(k,w,CT[k]));
   list.forEach(a=>{
     const fresh = firstSeen[a.name]>=early && firstSeen[a.name]>DATA_START;
-    a.v = fresh && a.s < EARLY_SHARE*tot ? 'Too early'
-        : a.s>=SPEND_LINE ? (a.r>=bar?'Breakthrough':a.r>=1?'Spend Winner':'Loser')
-        : (a.r>=bar && a.p>=KPI_MIN ? 'KPI Winner' : 'Loser');
+    const [v,info]=CV[a.concept];
+    a.v = v==='Loser' && fresh && a.s < EARLY_SHARE*tot ? 'Too early' : v;
+    a.vinfo = info;
+    a.share = tot ? a.s/tot : 0;
     a.prof = a.r>=bar;
     // Any ad whose DCT has a ClickUp task takes CS / Editor from that task. Picks fill whatever the task leaves empty.
     const t0 = a.dct ? tasksByDct[a.dct] : null;
@@ -147,7 +209,7 @@ function adsFor(p){
   });
   list.sort((x,y)=>y.s-x.s);
   const all=list.slice(0,TOP_N[w.kind]||9);   // only the top N ads by spend are analysed and shown
-  return cache[p]={list:all,full:list,tot,bar,raw,src};
+  return cache[p]={list:all,full:list,tot,bar,src};
 }
 const W = () => adsFor(period);
 const VCLS = {'Breakthrough':'bt','Spend Winner':'spend','KPI Winner':'kpi','Loser':'lose','Too early':'early'};
@@ -156,15 +218,14 @@ const attributedAd = a => !!(a.cs||a.ed);
 
 
 function renderWinners(){
-  const {list,full,tot,bar,raw}=W(), N=TOP_N[K()]||9;
+  const {list,full,tot,bar}=W(), N=TOP_N[K()]||9;
   const done=list.filter(a=>a.cs&&a.ed).length;
   $('#pickCount').textContent=`${done} of ${list.length} ads fully credited`;
   $('#pickBar').style.width=list.length?(100*done/list.length)+'%':'0';
   $('#flowPicks').textContent=`${done} of ${list.length} top ads credited`;
   const n=v=>list.filter(a=>a.v===v).length;
   $('#winTitle').textContent=`Top ${N} ads by spend`;
-  $('#winSub').textContent=`${WIN[period].label}: ${money(tot)} spent across ${full.length} ads with $100+ spend. Showing the top ${list.length} by spend. ROAS bar ${bar.toFixed(2)}`+
-    (raw<bar?` (top 20 ads blended ${raw.toFixed(2)}, so the ${FLOOR.toFixed(1)} floor applies)`:' (blended ROAS of the top 20 ads by spend)')+
+  $('#winSub').textContent=`${WIN[period].label}: ${money(tot)} spent across ${full.length} ads. Showing the top ${list.length} by spend. IDGAF rules: KPI ${bar.toFixed(1)} ROAS, share line 10% of weekly account spend`+
     `. In the top ${list.length}: ${n('Breakthrough')} Breakthrough, ${n('Spend Winner')} Spend Winner, ${n('KPI Winner')} KPI Winner, ${n('Too early')} too early.`;
   const sel=(a,role,opts,cur)=>`<label class="pk"><span>${role}</span><select data-ad="${esc(a.name)}" data-role="${role}"><option value="">Pick…</option>${opts.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('')}</select></label>`;
   $('#wgrid').innerHTML = list.length ? list.map((a,i)=>{
@@ -226,10 +287,14 @@ function prod(){
   const [a,b]=windowRange(), inW=d=>d&&d>=a&&d<b, E={}, C={};
   (D.tasks||[]).forEach(t=>{
     const cs=personId(t.cs), ed=personId(t.editor), fin=ts(t.final)||ts(t.launched), st=ts(t.started)||ts(t.created);
-    if(cs){ const c=C[cs]||(C[cs]={briefs:0,shipped:0,open:0}); if(inW(ts(t.created))) c.briefs++; if(inW(ts(t.launched))) c.shipped++; if(!t.launched) c.open++; }
-    if(ed){ const e=E[ed]||(E[ed]={delivered:0,days:[],open:0}); if(inW(fin)){ e.delivered++; if(st) e.days.push((fin-st)/864e5); } if(!fin) e.open++; }
+    if(cs){ const c=C[cs]||(C[cs]={briefs:0,shipped:0,open:0,tl:[]}); if(inW(ts(t.created))) c.briefs++; const la=ts(t.launched), cr=ts(t.created);
+      if(inW(la)){ c.shipped++; if(cr&&la>cr) c.tl.push((la-cr)/864e5); } if(!t.launched) c.open++; }
+    if(ed){ const e=E[ed]||(E[ed]={delivered:0,days:[],rv:[],open:0}); const fd=ts(t.first_draft);
+      if(inW(fin)){ e.delivered++; if(st) e.days.push((fin-st)/864e5); if(fd&&fin>=fd) e.rv.push((fin-fd)/864e5); } if(!fin) e.open++; }
   });
-  Object.values(E).forEach(e=>{ e.fin=e.days.length?e.days.reduce((x,y)=>x+y,0)/e.days.length:null; });
+  const avg=l=>l.length?l.reduce((x,y)=>x+y,0)/l.length:null;
+  Object.values(E).forEach(e=>{ e.fin=avg(e.days); e.rev=avg(e.rv); });
+  Object.values(C).forEach(c=>{ c.ttl=avg(c.tl); });
   return {E,C};
 }
 function renderProd(){
@@ -244,41 +309,44 @@ function renderProd(){
 /* ---------- cards ---------- */
 const attributed = (id,role) => W().list.filter(a=>(role==='CS'?a.cs:a.ed)===id);
 const wavg=(l,f,w)=>{let s=0,t=0;l.forEach(a=>{const v=f(a),x=w(a);if(v!=null){s+=v*x;t+=x;}});return t?s/t:null;};
+/* Card stats show real numbers. Each stat also gets a 35-99 score that only feeds the big rating (OVR) and the bars on the back.
+   S entries: [label, score, description, side, shown value]. */
 function statsFor(p){
-  const wk=SHORT(), mine=attributed(p.id,p.role), {tot,list}=W(), P=prod();
-  const spend=mine.reduce((t,a)=>t+a.s,0);
-  const judged=mine.filter(a=>a.v!=='Too early').length;
+  const mine=attributed(p.id,p.role), {tot,list}=W(), P=prod();
+  const spend=mine.reduce((t,a)=>t+a.s,0), rev=mine.reduce((t,a)=>t+a.rev,0);
   const nBT=mine.filter(a=>a.v==='Breakthrough').length, nSW=mine.filter(a=>a.v==='Spend Winner').length, nKPI=mine.filter(a=>a.v==='KPI Winner').length;
-  const hitPct=judged?100*(nBT+nSW)/judged:null, kpiPct=judged?100*nKPI/judged:null;
-  const topR=k=>{const t=mine.slice(0,k),ss=t.reduce((q,a)=>q+a.s,0);return ss?t.reduce((q,a)=>q+a.rev,0)/ss:null;};
   const vids=mine.filter(a=>a.video&&a.h>1);
   const hook=wavg(vids,a=>a.h,a=>a.s), hold=wavg(vids,a=>a.hd>0?a.hd:null,a=>a.s);
-  const roas=spend?mine.reduce((t,a)=>t+a.rev,0)/spend:null, share=tot?100*spend/tot:0;
+  const roas=spend?rev/spend:null, share=tot?100*spend/tot:0;
   const has=mine.length>0||list.some(attributedAd);
   const n=WIN[period].days, S=[], sc=K()==='life'||n>31?0.5:n>7?1:2;
+  const noAttr=has?'no ads credited to them in the top '+list.length:'no ads credited yet';
+  const pct=v=>v.toFixed(v>=10||v===0?0:1)+'%';
   if(p.role==='ED'){ const v=P.E[p.id];
-    S.push(['VOL', v?clamp(Math.round(50+3.5*sc*v.delivered),35,99):null, v?`${v.delivered} ads delivered`:'no ClickUp tasks yet']);
-    S.push(['FIN', v&&v.fin!=null?clamp(Math.round(99-5*v.fin),40,95):null, v&&v.fin!=null?`${v.fin.toFixed(1)} days to final`:'no Final dates yet']);
+    S.push(['DLV', v?clamp(Math.round(50+3.5*sc*v.delivered),35,99):null, v?`${v.delivered} ads delivered (Final date in the window)`:'no ClickUp tasks yet','front', v?String(v.delivered):null]);
   } else { const v=P.C[p.id];
-    S.push(['BRF', v?clamp(Math.round(45+2.5*sc*v.briefs),35,99):null, v?`${v.briefs} briefs created`:'no ClickUp tasks yet']);
-    S.push(['SHIP', v&&v.briefs?clamp(Math.round(40+0.55*(100*v.shipped/v.briefs)),35,99):null, v&&v.briefs?`${v.shipped} of ${v.briefs} shipped`:'no briefs yet']);
+    S.push(['BRF', v?clamp(Math.round(45+2.5*sc*v.briefs),35,99):null, v?`${v.briefs} briefs created in ClickUp`:'no ClickUp tasks yet','front', v?String(v.briefs):null]);
   }
-  const noAttr=has?'no judged ads yet':'no attributed ads yet';
-  S.push(['HIT', hitPct!=null?clamp(Math.round(45+1.4*hitPct),35,99):null, hitPct!=null?`${hitPct.toFixed(0)}% hit rate · ${nBT+nSW} of ${judged}`:noAttr]);
-  S.push(['KPI', kpiPct!=null?clamp(Math.round(45+0.8*kpiPct),35,99):null, kpiPct!=null?`${kpiPct.toFixed(0)}% KPI hit rate · ${nKPI} of ${judged}`:noAttr]);
-  S.push(['BRK', has?clamp(Math.round((wk?55:50)+(wk?20:n<=31?12:6)*nBT),40,99):null, has?`${nBT} breakthrough${nBT===1?'':'s'}`:noAttr]);
-  if(p.role==='ED'){
-    S.push(['HOOK', hook!=null?clamp(Math.round(30+1.15*hook),35,99):null, hook!=null?`${hook.toFixed(0)}% hook rate (videos)`:'no attributed videos']);
-    S.push(['HOLD', hold!=null?clamp(Math.round(40+2*hold),35,99):null, hold!=null?`${hold.toFixed(0)}% hold rate`:'no attributed videos','back']);
-  } else {
-    S.push(['ROAS', roas!=null?clamp(Math.round(50+125*(roas-0.8)),35,99):null, roas!=null?`${roas.toFixed(2)} blended ROAS on ${money(spend)}`:'no ads attributed yet']);
-    [1,3,5].forEach(k=>{const r=topR(k); if(mine.length>=k||k===1) S.push(['TOP'+k, r!=null?clamp(Math.round(50+125*(r-0.8)),35,99):null, r!=null?`${r.toFixed(2)} ROAS · top ${k} ad${k>1?'s':''} by spend`:'no ads attributed yet','back']);});
-    S.push(['HOOK', hook!=null?clamp(Math.round(30+1.15*hook),35,99):null, hook!=null?`${hook.toFixed(0)}% hook rate (videos)`:'no attributed videos','back']);
+  S.push(['ADSP', has?clamp(Math.round(45+2*share),40,99):null, has?`${pct(share)} of all Meta spend · ${money(spend)} of ${money(tot)}`:noAttr,'front', has?pct(share):null]);
+  S.push(['BRK', has?clamp(55+20*nBT,40,99):null, has?`${nBT} breakthrough${nBT===1?'':'s'}: 10%+ of weekly spend at ${KPI_ROAS.toFixed(1)}+ ROAS while the account budget grew 10%+`:noAttr,'front', has?String(nBT):null]);
+  S.push(['SPND', has?clamp(50+12*nSW,40,99):null, has?`${nSW} spend winner${nSW===1?'':'s'}: 10%+ of weekly spend, budget not growing on it`:noAttr,'front', has?String(nSW):null]);
+  S.push(['KPI', has?clamp(50+10*nKPI,40,99):null, has?`${nKPI} KPI winner${nKPI===1?'':'s'}: under the 10% line at ${KPI_ROAS.toFixed(1)}+ ROAS (3+ purchases)`:noAttr,'front', has?String(nKPI):null]);
+  S.push(['ROAS', roas!=null?clamp(Math.round(50+125*(roas-0.8)),35,99):null, roas!=null?`${roas.toFixed(2)} blended ROAS on ${money(spend)}`:noAttr,'front', roas!=null?roas.toFixed(2):null]);
+  // back of the card: softer metrics
+  S.push(['HOOK', hook!=null?clamp(Math.round(30+1.15*hook),35,99):null, hook!=null?'3s views / impressions on their videos':'no credited videos','back', hook!=null?hook.toFixed(0)+'%':null]);
+  S.push(['HOLD', hold!=null?clamp(Math.round(40+2*hold),35,99):null, hold!=null?'thruplays / 3s views on their videos':'no credited videos','back', hold!=null?hold.toFixed(0)+'%':null]);
+  if(p.role==='ED'){ const v=P.E[p.id]||{};
+    S.push(['DAYS', v.fin!=null?clamp(Math.round(99-5*v.fin),40,95):null, v.fin!=null?'average days from start to Final':'no Final dates yet','back', v.fin!=null?v.fin.toFixed(1)+'d':null]);
+    S.push(['REV', v.rev!=null?clamp(Math.round(95-6*v.rev),40,95):null, v.rev!=null?'average days from first draft to Final (revision time)':'no first draft dates yet','back', v.rev!=null?v.rev.toFixed(1)+'d':null]);
+    S.push(['OPEN', null, 'tasks without a Final date','back', String(v.open||0)]);
+  } else { const v=P.C[p.id]||{};
+    S.push(['SHIP', v.briefs?clamp(Math.round(40+0.55*(100*v.shipped/v.briefs)),35,99):null, v.briefs?`${v.shipped} of ${v.briefs} briefs launched in the window`:'no briefs in the window','back', v.briefs?`${v.shipped}/${v.briefs}`:null]);
+    S.push(['DAYS', v.ttl!=null?clamp(Math.round(99-3*v.ttl),40,95):null, v.ttl!=null?'average days from brief to launch':'no launches yet','back', v.ttl!=null?v.ttl.toFixed(1)+'d':null]);
+    S.push(['OPEN', null, 'briefs not launched yet','back', String(v.open||0)]);
   }
-  S.push(['SHR', has?clamp(Math.round(45+2*share),40,99):null, has?`${share.toFixed(1)}% of spend · ${money(spend)}`:noAttr,'back']);
   return {S,mine};
 }
-const baseOvr=p=>{const v=statsFor(p).S.filter(s=>s[3]!=='back').map(s=>s[1]).filter(x=>x!=null);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):0;};
+const baseOvr=p=>{const v=statsFor(p).S.filter(s=>s[3]==='front').map(s=>s[1]).filter(x=>x!=null);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):0;};
 const visiblePeople=()=>PEOPLE.filter(p=>!p.onlyIfAds||attributed(p.id,p.role).length);
 const special=()=>{const vp=visiblePeople();return vp.reduce((b,p)=>baseOvr(p)>baseOvr(b)?p:b,vp[0]);};
 const boost=p=>(SHORT()&&p===special())?3:0;
@@ -288,8 +356,8 @@ const colorOf=v=>v>=80?'var(--good)':v>=68?'var(--mid)':'var(--low)';
 
 function cardHTML(p){
   const o=ovrOf(p),t=tierOf(p),b=boost(p),st=statsFor(p).S,sp=t==='t-special';
-  const stats=st.filter(s=>s[3]!=='back').map(s=>s[1]==null?'<div class="na"><b>–</b><span>'+s[0]+'</span></div>':'<div><b>'+Math.min(99,s[1]+b)+'</b><span>'+s[0]+'</span></div>').join('');
-  const rows=st.map(s=>{const v=s[1]==null?null:Math.min(99,s[1]+b);return '<div class="row"><span class="k">'+s[0]+'</span><div class="meta"><span>'+esc(s[2])+'</span><div class="track"><div class="fill" style="--w:'+(v??0)+'%;background:'+(v==null?'transparent':colorOf(v))+'"></div></div></div><span class="v">'+(v??'–')+'</span></div>';}).join('');
+  const stats=st.filter(s=>s[3]==='front').map(s=>s[4]==null?'<div class="na"><b>–</b><span>'+s[0]+'</span></div>':'<div><b>'+esc(s[4])+'</b><span>'+s[0]+'</span></div>').join('');
+  const rows=st.map(s=>{const v=s[1];return '<div class="row"><span class="k">'+s[0]+'</span><div class="meta"><span>'+esc(s[2])+'</span><div class="track"><div class="fill" style="--w:'+(v??0)+'%;background:'+(v==null?'transparent':colorOf(v))+'"></div></div></div><span class="v">'+esc(s[4]??'–')+'</span></div>';}).join('');
   const foot=sp?(WIN[period].tag+' · '+WIN[period].label):('Lumeo · '+p.role);
   return '<button type="button" class="cardbtn '+t+'" aria-pressed="false" aria-label="'+esc(p.name)+', '+esc(p.roleName)+', rating '+o+'. Tap to flip.">'+
     '<div class="shadow"></div><div class="tiltbox"><div class="side front3d">'+
@@ -301,12 +369,12 @@ function cardHTML(p){
     (sp?'<span class="badge">'+WIN[period].tag+'</span>':'')+'<div class="gloss shield"></div></div>'+
     '<div class="side back3d"><div class="edge e1 shield"></div><div class="bgface shield"></div>'+
     '<div class="bk'+(st.length>8?' dense':'')+'"><h4>'+esc(p.name)+'<small>'+esc(WIN[period].label)+' · '+esc(p.roleName)+'</small></h4>'+rows+
-    '<div class="hint">'+(b?'Includes +3 Player of the Week boost · ':'')+'Tap to flip back</div></div></div></div></button>';
+    '<div class="hint">'+(b?'Rating includes +3 for '+esc(WIN[period].special)+' · ':'')+'Tap to flip back</div></div></div></div></button>';
 }
 function bestWorst(p){
-  const st=statsFor(p).S.filter(s=>s[1]!=null&&s[3]!=='back'),b=boost(p); if(!st.length) return '';
+  const st=statsFor(p).S.filter(s=>s[1]!=null&&s[3]==='front'); if(!st.length) return '';
   const best=st.reduce((m,s)=>s[1]>m[1]?s:m),worst=st.reduce((m,s)=>s[1]<m[1]?s:m);
-  return '<div class="panel"><div class="p-tag"><span>'+esc(WIN[period].label)+'</span></div><div class="bestworst"><span>Best <b>'+best[0]+' '+Math.min(99,best[1]+b)+'</b></span><span>Work on <b>'+worst[0]+' '+Math.min(99,worst[1]+b)+'</b></span></div></div>';
+  return '<div class="panel"><div class="p-tag"><span>'+esc(WIN[period].label)+'</span></div><div class="bestworst"><span>Best <b>'+best[0]+' '+esc(best[4])+'</b></span><span>Work on <b>'+worst[0]+' '+esc(worst[4])+'</b></span></div></div>';
 }
 function adHTML(p){
   const mine=statsFor(p).mine; if(!mine.length) return '';
@@ -340,7 +408,10 @@ function renderCards(){
 function renderAll(){
   const w=WIN[period], src=W().src;
   $('#periodNote').textContent=!w.from?'No Meta data yet':`Meta: ${w.from===w.to?fmtDay(w.from):fmtD(w.from)+' to '+fmtD(w.to)}${soFar(w.to)?' (so far)':''}`+(src==='weekly'?' · weekly numbers (before daily data starts)':'');
-  $('#rulesLegend').innerHTML=`<b>Verdicts</b> Breakthrough = $${SPEND_LINE/1000}K+ spend and ROAS at or above the bar · Spend Winner = $${SPEND_LINE/1000}K+ spend, ROAS 1.0 to the bar · KPI Winner = under $${SPEND_LINE/1000}K, ROAS at or above the bar, ${KPI_MIN}+ purchases · Too early = first spend in the last 7 days of the window and under 3% of its spend · Loser = the rest. Bar = blended ROAS of the top 20 ads in the window, never under ${FLOOR.toFixed(1)}`;
+  $('#rulesLegend').innerHTML=`<b>Verdicts (IDGAF)</b> Checked by Monday week on the ad's concept, using all Meta spend in the account. `+
+    `<b>Breakthrough</b> = a week at 10%+ of account spend and ${KPI_ROAS.toFixed(1)}+ ROAS while the account spends 10%+ more per day than the week before the concept launched (a week 1 winner can become one in week 2 or 3) · `+
+    `<b>Spend Winner</b> = reached 10%+ of a week's spend, without the budget growing on it · <b>KPI Winner</b> = under the 10% line, ${KPI_ROAS.toFixed(1)}+ ROAS with 3+ purchases · `+
+    `<b>Loser</b> = under the line and under ${KPI_ROAS.toFixed(1)} ROAS · <b>Too early</b> = under $100 spent, or new in the last 7 days with under 3% of spend. A week only counts if the concept spent $500+ in it.`;
   renderProd(); renderWinners(); renderCards();
 }
 const updAt=new Date(DAILY?DAILY.generated_at:D.generated_at).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'});
