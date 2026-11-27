@@ -57,11 +57,18 @@ button.th{border:0;padding:0;cursor:pointer;font:inherit;width:100%}
 
   <div class="bar sticky">
     <div class="seg" role="group" aria-label="Period">
+      <button type="button" data-p="day" aria-pressed="false">Day</button>
       <button type="button" data-p="week" aria-pressed="true">Week</button>
       <button type="button" data-p="month" aria-pressed="false">Month</button>
+      <button type="button" data-p="range" aria-pressed="false">Range</button>
       <button type="button" data-p="life" aria-pressed="false">Lifetime</button>
     </div>
-    <select id="periodPick" class="pick" aria-label="Pick a week or month"></select>
+    <select id="periodPick" class="pick" aria-label="Pick a day, week, month or date range"></select>
+    <div class="range" id="rangeBox" hidden>
+      <label><span>From</span><input type="date" id="rFrom"></label>
+      <label><span>To</span><input type="date" id="rTo"></label>
+      <button type="button" class="btn" id="rApply">Apply</button>
+    </div>
     <span class="note" id="periodNote"></span>
   </div>
 
