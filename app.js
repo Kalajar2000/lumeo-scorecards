@@ -40,7 +40,7 @@ const CS_OPTS=['Victor','Joel','Richard','Alex'], ED_OPTS=['Hamid','Daly','techk
 const real = v => v && !/^(other|creator)$/i.test(String(v)) ? v : null;   // "Other" means nobody picked yet
 const pickFor=name=>PICKS[name]||null;
 /* Thumbnail and preview link per ad. media.json is rebuilt every day by the Make scenario "Lumeo: Scorecard ad previews". */
-const mediaFor=name=>{ const m=MEDIA[name]||{}; return {preview:m.preview||LINKS[name]||'', thumb:m.thumb||m.thumb_src||''}; };
+const mediaFor=name=>{ const m=MEDIA[name]||{}; return {preview:m.preview||LINKS[name]||'', thumb:m.thumb||m.thumb_src||'', video:m.video_src||''}; };
 const toast=m=>{const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),2200);};
 
 const S = D.settings||{};
@@ -126,13 +126,28 @@ function renderWinners(){
       : `<div class="who">${a.unmatched?`DCT ${a.dct} has no ClickUp task. `:a.dct?`No ClickUp task for DCT # ${a.dct}. `:'No DCT number in the ad name. '}${a.cs&&a.ed?'Credit saved for everyone.':'Pick who made it. It saves for everyone.'}</div>`);
     const h=a.h>1?`<span>${a.h.toFixed(0)}%<em>hook</em></span>`:'';
     const md=mediaFor(a.name), href=md.preview;
-    const th=`<${href?`a href="${esc(href)}" target="_blank" rel="noopener" title="Open the ad preview"`:'div'} class="th${md.thumb?'':' blank'}"${md.thumb?` style="background-image:url('${esc(md.thumb)}')"`:''}>${md.thumb?'':`<b>${a.dct?'DCT '+a.dct:esc(a.name.slice(0,12))}</b>`}${a.video?'<i class="play">▶</i>':''}<span>#${i+1}</span></${href?'a':'div'}>`;
+    const playable=md.video||md.thumb;
+    const th=`<${playable?`button type="button" data-play="${esc(a.name)}" title="${md.video?'Play the ad':'View the ad'}"`:href?`a href="${esc(href)}" target="_blank" rel="noopener" title="Open the ad preview"`:'div'} class="th${md.thumb?'':' blank'}"${md.thumb?` style="background-image:url('${esc(md.thumb)}')"`:''}>${md.thumb?'':`<b>${a.dct?'DCT '+a.dct:esc(a.name.slice(0,12))}</b>`}${a.video||md.video?'<i class="play">▶</i>':''}<span>#${i+1}</span></${playable?'button':href?'a':'div'}>`;
     return `<div class="ad ${a.cs&&a.ed?'ok':''}">${th}<div class="body">
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${type}<span class="pill">${a.video?'Video':'Static'}</span></div>
       <div class="nm">${href?`<a href="${esc(href)}" target="_blank" rel="noopener">${esc(a.name)}</a>`:esc(a.name)}</div>
       <div class="mx"><span>${a.r.toFixed(2)}<em>ROAS</em></span><span>${money(a.s)}<em>spend</em></span><span>${a.p}<em>purch</em></span>${h}</div>
       ${who}</div></div>`; }).join('') : '<p class="note">Nothing here for this period.</p>';
 }
+/* Plays the ad on the page: the video when Meta gave one, otherwise the full-size image. */
+const player=$('#player'), pbox=$('#pbox');
+function closePlayer(){ pbox.innerHTML=''; player.hidden=true; document.body.style.overflow=''; }
+$('#wgrid').addEventListener('click',e=>{
+  const b=e.target.closest('[data-play]'); if(!b) return;
+  const name=b.dataset.play, md=mediaFor(name);
+  pbox.innerHTML=(md.video?`<video src="${esc(md.video)}" ${md.thumb?`poster="${esc(md.thumb)}"`:''} controls autoplay playsinline></video>`:`<img src="${esc(md.thumb)}" alt="">`)+
+    `<div class="pcap"><b>${esc(name)}</b>${md.preview?` · <a href="${esc(md.preview)}" target="_blank" rel="noopener">Open in Meta</a>`:''}</div>`;
+  const v=pbox.querySelector('video'); if(v) v.addEventListener('error',()=>{ if(md.preview) pbox.querySelector('.pcap').insertAdjacentHTML('beforeend',' · This video link expired. It refreshes daily at 6:00.'); });
+  player.hidden=false; document.body.style.overflow='hidden';
+});
+$('#pclose').addEventListener('click',closePlayer);
+player.addEventListener('click',e=>{ if(e.target===player) closePlayer(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!player.hidden) closePlayer(); });
 $('#wgrid').addEventListener('change',async e=>{
   const el=e.target; if(!el.matches('select[data-ad]')) return;
   const name=el.dataset.ad, prev=Object.assign({},PICKS[name]||{});
