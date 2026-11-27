@@ -8,7 +8,13 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="style.css">
 <style>
-.ad{grid-template-columns:minmax(0,1fr)}
+.ad .th{display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ink)}
+.ad .th.blank{background:linear-gradient(160deg,var(--panel2),var(--line))}
+.ad .th.blank b{font-family:var(--f-display);font-size:15px;text-align:center;padding:4px}
+.ad .th .play{position:absolute;top:6px;right:6px;font-style:normal;font-size:11px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.ad .th:hover{outline:2px solid var(--holo1);outline-offset:1px}
+.ad .nm a{color:inherit}
+.owner.picker{align-items:center}
 .who{font-size:12px;color:var(--muted)}
 .updated{font-size:13px;color:var(--muted)}
 .watch{display:inline-flex;align-items:center;gap:6px;margin:6px 0 2px;padding:7px 12px;border-radius:8px;background:var(--ink,#111);color:var(--bg,#fff);font-weight:600;font-size:13px;text-decoration:none}
@@ -62,14 +68,9 @@
 
   <section id="s2">
     <h2><span class="num">2</span>Winners · <span class="num">3</span>Who made it</h2>
-    <p class="sub" style="margin:0" id="winSub"></p>
+    <p class="sub" style="margin:0"><b id="winTitle">Top ads by spend</b>. <span id="winSub"></span></p>
     <div class="bar">
-      <div class="tabs" role="group" aria-label="Show">
-        <button type="button" class="tab" data-w="win" aria-pressed="true">Winners</button>
-        <button type="button" class="tab" data-w="all" aria-pressed="false">All ads</button>
-        <button type="button" class="tab" data-w="todo" aria-pressed="false">No owner yet</button>
-        <button type="button" class="tab" data-w="unm" aria-pressed="false">Unmatched</button>
-      </div>
+      <span class="note">Tap a thumbnail to open the ad. Ads with no ClickUp credit get dropdowns: pick the CS and editor and it saves for everyone.</span>
       <div style="display:flex;gap:10px;align-items:center;flex:1;justify-content:flex-end;min-width:220px">
         <span class="note" id="pickCount"></span><div class="progress"><i id="pickBar"></i></div>
       </div>
