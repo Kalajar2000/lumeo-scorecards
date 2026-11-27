@@ -42,7 +42,7 @@ const CS_OPTS=['Victor','Joel','Richard','Alex'], ED_OPTS=['Hamid','Daly','techk
 const real = v => v && !/^(other|creator)$/i.test(String(v)) ? v : null;   // "Other" means nobody picked yet
 const pickFor=name=>PICKS[name]||null;
 /* Thumbnail and preview link per ad. media.json is rebuilt every day by the Make scenario "Lumeo: Scorecard ad previews". */
-const mediaFor=name=>{ const m=MEDIA[name]||{}; return {preview:m.preview||LINKS[name]||'', thumb:m.thumb||m.thumb_src||'', video:m.video_src||''}; };
+const mediaFor=name=>{ const m=MEDIA[name]||{}; return {preview:m.preview||LINKS[name]||'', thumb:m.thumb||m.thumb_src||'', video:m.video_src||'', embed:m.embed||''}; };
 const toast=m=>{const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),2200);};
 
 const S = D.settings||{};
@@ -238,8 +238,8 @@ function renderWinners(){
       : `<div class="who">${a.unmatched?`DCT ${a.dct} has no ClickUp task. `:a.dct?`No ClickUp task for DCT # ${a.dct}. `:'No DCT number in the ad name. '}${a.cs&&a.ed?'Credit saved for everyone.':'Pick who made it. It saves for everyone.'}</div>`);
     const h=a.h>1?`<span>${a.h.toFixed(0)}%<em>hook</em></span>`:'';
     const md=mediaFor(a.name), href=md.preview;
-    const playable=md.video||md.thumb;
-    const th=`<${playable?`button type="button" data-play="${esc(a.name)}" title="${md.video?'Play the ad':'View the ad'}"`:href?`a href="${esc(href)}" target="_blank" rel="noopener" title="Open the ad preview"`:'div'} class="th${md.thumb?'':' blank'}"${md.thumb?` style="background-image:url('${esc(md.thumb)}')"`:''}>${md.thumb?'':`<b>${a.dct?'DCT '+a.dct:esc(a.name.slice(0,12))}</b>`}${a.video||md.video?'<i class="play">▶</i>':''}<span>#${i+1}</span></${playable?'button':href?'a':'div'}>`;
+    const playable=md.video||md.embed||md.thumb;
+    const th=`<${playable?`button type="button" data-play="${esc(a.name)}" title="${md.video||md.embed?'Play the ad':'View the ad'}"`:href?`a href="${esc(href)}" target="_blank" rel="noopener" title="Open the ad preview"`:'div'} class="th${md.thumb?'':' blank'}"${md.thumb?` style="background-image:url('${esc(md.thumb)}')"`:''}>${md.thumb?'':`<b>${a.dct?'DCT '+a.dct:esc(a.name.slice(0,12))}</b>`}${a.video||md.video||md.embed?'<i class="play">▶</i>':''}<span>#${i+1}</span></${playable?'button':href?'a':'div'}>`;
     return `<div class="ad ${a.cs&&a.ed?'ok':''}">${th}<div class="body">
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${type}<span class="pill">${a.video?'Video':'Static'}</span></div>
       <div class="nm">${href?`<a href="${esc(href)}" target="_blank" rel="noopener">${esc(a.name)}</a>`:esc(a.name)}</div>
@@ -252,7 +252,7 @@ function closePlayer(){ pbox.innerHTML=''; player.hidden=true; document.body.sty
 $('#wgrid').addEventListener('click',e=>{
   const b=e.target.closest('[data-play]'); if(!b) return;
   const name=b.dataset.play, md=mediaFor(name);
-  pbox.innerHTML=(md.video?`<video src="${esc(md.video)}" ${md.thumb?`poster="${esc(md.thumb)}"`:''} controls autoplay playsinline></video>`:`<img src="${esc(md.thumb)}" alt="">`)+
+  pbox.innerHTML=(md.video?`<video src="${esc(md.video)}" ${md.thumb?`poster="${esc(md.thumb)}"`:''} controls autoplay playsinline></video>`:md.embed?`<iframe src="${esc(md.embed)}" title="Ad preview" scrolling="no" allow="autoplay; encrypted-media"></iframe>`:`<img src="${esc(md.thumb)}" alt="">`)+
     `<div class="pcap"><b>${esc(name)}</b>${md.preview?` · <a href="${esc(md.preview)}" target="_blank" rel="noopener">Open in Meta</a>`:''}</div>`;
   const v=pbox.querySelector('video'); if(v) v.addEventListener('error',()=>{ if(md.preview) pbox.querySelector('.pcap').insertAdjacentHTML('beforeend',' · This video link expired. It refreshes daily at 6:00.'); });
   player.hidden=false; document.body.style.overflow='hidden';
@@ -265,7 +265,7 @@ $('#wgrid').addEventListener('change',async e=>{
   const name=el.dataset.ad, prev=Object.assign({},PICKS[name]||{});
   const cur=Object.assign({},prev); if(el.dataset.role==='CS') cur.cs=el.value||undefined; else cur.ed=el.value||undefined;
   ['cs','ed'].forEach(k=>{ if(!real(cur[k])) delete cur[k]; });
-  PICKS[name]=cur; Object.keys(cache).forEach(k=>delete cache[k]); renderAll();
+  PICKS[name]=cur; Object.keys(cache).forEach(k=>delete cache[k]); Object.keys(TEAMC).forEach(k=>delete TEAMC[k]); renderAll();
   toast(`Saving ${name}…`);
   try{
     const r=await fetch(PICK_HOOK+'?'+new URLSearchParams({ad:name,cs:cur.cs||'',ed:cur.ed||''}));
@@ -273,7 +273,7 @@ $('#wgrid').addEventListener('change',async e=>{
     if(!r.ok||j.ok===false) throw new Error(j.error||r.status);
     toast(`Saved for everyone: ${name} · CS ${cur.cs||'–'} · ED ${cur.ed||'–'}`);
   }catch(err){
-    PICKS[name]=prev; Object.keys(cache).forEach(k=>delete cache[k]); renderAll();
+    PICKS[name]=prev; Object.keys(cache).forEach(k=>delete cache[k]); Object.keys(TEAMC).forEach(k=>delete TEAMC[k]); renderAll();
     toast(`Could not save ${name}. Try again.`);
   }
 });
@@ -309,29 +309,43 @@ function renderProd(){
 /* ---------- cards ---------- */
 const attributed = (id,role) => W().list.filter(a=>(role==='CS'?a.cs:a.ed)===id);
 const wavg=(l,f,w)=>{let s=0,t=0;l.forEach(a=>{const v=f(a),x=w(a);if(v!=null){s+=v*x;t+=x;}});return t?s/t:null;};
-/* Card stats show real numbers. Each stat also gets a 35-99 score that only feeds the big rating (OVR) and the bars on the back.
-   S entries: [label, score, description, side, shown value]. */
-function statsFor(p){
-  const mine=attributed(p.id,p.role), {tot,list}=W(), P=prod();
+/* Card stats show real numbers. Each front stat also gets a 60-95 score against the best person in the same role in this
+   window (best = 95, zero = 60; briefs and deliveries count against a best of at least 3), so ratings stay fair while most ads are still uncredited. A stat nobody in the role has
+   scored yet (say, no breakthroughs this week) is shown but left out of the rating. ROAS is scored against the account's
+   ROAS in the window (account level = 72). S entries: [label, score, description, side, shown value]. */
+function rawFor(p){
+  const mine=attributed(p.id,p.role), {tot}=W(), P=prod();
   const spend=mine.reduce((t,a)=>t+a.s,0), rev=mine.reduce((t,a)=>t+a.rev,0);
-  const nBT=mine.filter(a=>a.v==='Breakthrough').length, nSW=mine.filter(a=>a.v==='Spend Winner').length, nKPI=mine.filter(a=>a.v==='KPI Winner').length;
+  const v=p.role==='ED'?P.E[p.id]:P.C[p.id];
+  return {mine, spend, rev, prodN: v?(p.role==='ED'?v.delivered:v.briefs):null,
+    share: tot?100*spend/tot:0, roas: spend?rev/spend:null,
+    nBT: mine.filter(a=>a.v==='Breakthrough').length, nSW: mine.filter(a=>a.v==='Spend Winner').length, nKPI: mine.filter(a=>a.v==='KPI Winner').length};
+}
+const TEAMC={};
+function teamMax(role){
+  const key=period+'|'+role; if(TEAMC[key]) return TEAMC[key];
+  const rs=PEOPLE.filter(p=>p.role===role).map(rawFor), mx=f=>Math.max(0,...rs.map(f).filter(x=>x!=null));
+  return TEAMC[key]={prodN:Math.max(3,mx(r=>r.prodN)),   // 1 brief out of a best of 1 should not read as a 95
+     share:mx(r=>r.share), nBT:mx(r=>r.nBT), nSW:mx(r=>r.nSW), nKPI:mx(r=>r.nKPI)};
+}
+const rel=(v,max)=>max>0&&v!=null?Math.round(60+35*v/max):null;
+function statsFor(p){
+  const R=rawFor(p), {mine,spend}=R, {tot,list}=W(), P=prod(), M=teamMax(p.role);
+  const acct=list.length?list.reduce((t,a)=>t+a.rev,0)/Math.max(1,list.reduce((t,a)=>t+a.s,0)):null;
   const vids=mine.filter(a=>a.video&&a.h>1);
   const hook=wavg(vids,a=>a.h,a=>a.s), hold=wavg(vids,a=>a.hd>0?a.hd:null,a=>a.s);
-  const roas=spend?rev/spend:null, share=tot?100*spend/tot:0;
   const has=mine.length>0||list.some(attributedAd);
-  const n=WIN[period].days, S=[], sc=K()==='life'||n>31?0.5:n>7?1:2;
+  const S=[];
   const noAttr=has?'no ads credited to them in the top '+list.length:'no ads credited yet';
   const pct=v=>v.toFixed(v>=10||v===0?0:1)+'%';
-  if(p.role==='ED'){ const v=P.E[p.id];
-    S.push(['DLV', v?clamp(Math.round(50+3.5*sc*v.delivered),35,99):null, v?`${v.delivered} ads delivered (Final date in the window)`:'no ClickUp tasks yet','front', v?String(v.delivered):null]);
-  } else { const v=P.C[p.id];
-    S.push(['BRF', v?clamp(Math.round(45+2.5*sc*v.briefs),35,99):null, v?`${v.briefs} briefs created in ClickUp`:'no ClickUp tasks yet','front', v?String(v.briefs):null]);
-  }
-  S.push(['ADSP', has?clamp(Math.round(45+2*share),40,99):null, has?`${pct(share)} of all Meta spend · ${money(spend)} of ${money(tot)}`:noAttr,'front', has?pct(share):null]);
-  S.push(['BRK', has?clamp(55+20*nBT,40,99):null, has?`${nBT} breakthrough${nBT===1?'':'s'}: 10%+ of weekly spend at ${KPI_ROAS.toFixed(1)}+ ROAS while the account budget grew 10%+`:noAttr,'front', has?String(nBT):null]);
-  S.push(['SPND', has?clamp(50+12*nSW,40,99):null, has?`${nSW} spend winner${nSW===1?'':'s'}: 10%+ of weekly spend, budget not growing on it`:noAttr,'front', has?String(nSW):null]);
-  S.push(['KPI', has?clamp(50+10*nKPI,40,99):null, has?`${nKPI} KPI winner${nKPI===1?'':'s'}: under the 10% line at ${KPI_ROAS.toFixed(1)}+ ROAS (3+ purchases)`:noAttr,'front', has?String(nKPI):null]);
-  S.push(['ROAS', roas!=null?clamp(Math.round(50+125*(roas-0.8)),35,99):null, roas!=null?`${roas.toFixed(2)} blended ROAS on ${money(spend)}`:noAttr,'front', roas!=null?roas.toFixed(2):null]);
+  const nobody=' (nobody on the team has one yet, so it does not count toward the rating)';
+  if(p.role==='ED') S.push(['DLV', rel(R.prodN,M.prodN), R.prodN!=null?`${R.prodN} ads delivered (Final date in the window)`:'no ClickUp tasks yet','front', R.prodN!=null?String(R.prodN):null]);
+  else S.push(['BRF', rel(R.prodN,M.prodN), R.prodN!=null?`${R.prodN} briefs created in ClickUp`:'no ClickUp tasks yet','front', R.prodN!=null?String(R.prodN):null]);
+  S.push(['ADSP', has?rel(R.share,M.share):null, has?`${pct(R.share)} of all Meta spend · ${money(spend)} of ${money(tot)}`:noAttr,'front', has?pct(R.share):null]);
+  S.push(['BRK', has?rel(R.nBT,M.nBT):null, has?`${R.nBT} breakthrough${R.nBT===1?'':'s'}: 10%+ of weekly spend at ${KPI_ROAS.toFixed(1)}+ ROAS while the account budget grew 10%+`+(M.nBT?'':nobody):noAttr,'front', has?String(R.nBT):null]);
+  S.push(['SPND', has?rel(R.nSW,M.nSW):null, has?`${R.nSW} spend winner${R.nSW===1?'':'s'}: 10%+ of weekly spend, budget not growing on it`+(M.nSW?'':nobody):noAttr,'front', has?String(R.nSW):null]);
+  S.push(['KPI', has?rel(R.nKPI,M.nKPI):null, has?`${R.nKPI} KPI winner${R.nKPI===1?'':'s'}: under the 10% line at ${KPI_ROAS.toFixed(1)}+ ROAS (3+ purchases)`+(M.nKPI?'':nobody):noAttr,'front', has?String(R.nKPI):null]);
+  S.push(['ROAS', R.roas!=null&&acct?clamp(Math.round(72+60*(R.roas-acct)),50,95):null, R.roas!=null?`${R.roas.toFixed(2)} blended ROAS on ${money(spend)} (top ads overall: ${acct?acct.toFixed(2):'–'})`:noAttr,'front', R.roas!=null?R.roas.toFixed(2):null]);
   // back of the card: softer metrics
   S.push(['HOOK', hook!=null?clamp(Math.round(30+1.15*hook),35,99):null, hook!=null?'3s views / impressions on their videos':'no credited videos','back', hook!=null?hook.toFixed(0)+'%':null]);
   S.push(['HOLD', hold!=null?clamp(Math.round(40+2*hold),35,99):null, hold!=null?'thruplays / 3s views on their videos':'no credited videos','back', hold!=null?hold.toFixed(0)+'%':null]);
@@ -346,12 +360,12 @@ function statsFor(p){
   }
   return {S,mine};
 }
-const baseOvr=p=>{const v=statsFor(p).S.filter(s=>s[3]==='front').map(s=>s[1]).filter(x=>x!=null);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):0;};
+const baseOvr=p=>{const v=statsFor(p).S.filter(s=>s[3]==='front').map(s=>s[1]).filter(x=>x!=null);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):60;};
 const visiblePeople=()=>PEOPLE.filter(p=>!p.onlyIfAds||attributed(p.id,p.role).length);
 const special=()=>{const vp=visiblePeople();return vp.reduce((b,p)=>baseOvr(p)>baseOvr(b)?p:b,vp[0]);};
 const boost=p=>(SHORT()&&p===special())?3:0;
 const ovrOf=p=>Math.min(99,baseOvr(p)+boost(p));
-const tierOf=p=>p===special()?'t-special':(ovrOf(p)>=75?'t-gold':ovrOf(p)>=65?'t-silver':'t-bronze');
+const tierOf=p=>p===special()?'t-special':(ovrOf(p)>=80?'t-gold':ovrOf(p)>=70?'t-silver':'t-bronze');   // gold 80+, silver 70-79
 const colorOf=v=>v>=80?'var(--good)':v>=68?'var(--mid)':'var(--low)';
 
 function cardHTML(p){
@@ -403,7 +417,8 @@ function renderCards(){
   $('#squad').innerHTML=list.map(p=>'<div class="slot">'+cardHTML(p)+'<span class="tap">Tap card for breakdown</span>'+bestWorst(p)+adHTML(p)+'</div>').join('');
   wire($('#squad'));
   const n=W().list.filter(attributedAd).length;
-  $('#footNote').textContent=n?`Ratings use ${n} attributed ads in this window.`:'No ads attributed in this window yet, so ratings only use production stats.';
+  const N=W().list.length;
+  $('#footNote').textContent=(n?`Ratings use ${n} of the top ${N} ads (the ones with a CS or editor credited). `:`None of the top ${N} ads has a CS or editor credited yet, so ratings only use ClickUp production. `)+`Each stat is scored against the best person in the same role this window. Pick the CS / editor on uncredited ads above to fill the ratings in.`;
 }
 function renderAll(){
   const w=WIN[period], src=W().src;
