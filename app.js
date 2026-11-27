@@ -1,6 +1,7 @@
 /* Lumeo scorecards. Reads data.json (written every Monday by Make) and picks.json (manual attribution).
    One rule set, three windows: Week (last Mon-Sun), Month (calendar month of last week), Lifetime. */
 (async function(){
+const TOP_N = {week:9, month:9, life:10};   // ads analysed per window: top N by spend
 const TRACK_FROM = 1000;      // DCT # from which an ad with no ClickUp task is flagged as unmatched. Attribution uses the ClickUp task for any DCT that has one.
 const EARLY_SHARE = 0.03;     // too early: first seen in the window's last week and under 3% of the window's spend
 const PEOPLE = [
@@ -21,16 +22,25 @@ const money = v => v>=1000 ? '$'+(v/1000).toFixed(v>=10000?0:1)+'K' : '$'+Math.r
 const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
 const personId = s => { if(!s) return null; const p=PEOPLE.find(x=>x.id.toLowerCase()===String(s).toLowerCase()); return p?p.id:String(s); };
 
-let D, PICKS={}, LINKS={};
+let D, PICKS={}, LINKS={}, MEDIA={};
 try{
   const bust='?t='+Date.now();
   D = await (await fetch('data.json'+bust)).json();
-  try{ PICKS = await (await fetch('picks.json'+bust)).json(); }catch(e){}
+  // Read picks straight from the repo so a pick saved a minute ago shows before Pages redeploys. Falls back to the Pages copy.
+  try{ const r=await fetch('https://api.github.com/repos/Kalajar2000/lumeo-scorecards/contents/picks.json?ref=main',{headers:{Accept:'application/vnd.github.raw+json'},cache:'no-store'}); if(!r.ok) throw 0; PICKS=await r.json(); }
+  catch(e){ try{ PICKS = await (await fetch('picks.json'+bust)).json(); }catch(e2){} }
   try{ LINKS = await (await fetch('links.json'+bust)).json(); }catch(e){}
+  try{ MEDIA = await (await fetch('media.json'+bust)).json(); }catch(e){}
 }catch(e){ $('#title').textContent='Scorecards'; $('#updated').textContent='Could not load data.json yet.'; return; }
 
-/* picks.json holds who made older ads that have no ClickUp task. Read-only on the page. */
+/* picks.json holds who made ads that have no ClickUp credit. The dropdowns on the page save into it for everyone
+   through the Make webhook "Lumeo: Scorecard save CS/Editor pick", which commits picks.json to the repo. */
+const PICK_HOOK='https://hook.us2.make.com/0gz3b5w3gedfdh2ubx3ijd1v16r70j2m';
+const CS_OPTS=['Victor','Joel','Richard','Alex'], ED_OPTS=['Hamid','Daly','techkidd','Eren','Joe'];
+const real = v => v && !/^(other|creator)$/i.test(String(v)) ? v : null;   // "Other" means nobody picked yet
 const pickFor=name=>PICKS[name]||null;
+/* Thumbnail and preview link per ad. media.json is rebuilt every day by the Make scenario "Lumeo: Scorecard ad previews". */
+const mediaFor=name=>{ const m=MEDIA[name]||{}; return {preview:m.preview||LINKS[name]||'', thumb:m.thumb||m.thumb_src||''}; };
 const toast=m=>{const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),2200);};
 
 const S = D.settings||{};
@@ -46,7 +56,7 @@ const WIN = {
   month:{weeks:ALLW.filter(w=>w.slice(0,7)===lastMonth), label:LAST?MONTHS[+lastMonth.slice(5)-1]:'Month', tag:'POTM', special:'Player of the Month', pack:'MONTH'},
   life:{weeks:ALLW, label:'Lifetime', tag:'GOAT', special:'Best overall', pack:'LIFETIME'}
 };
-let period='week', filter='all', wfilter='win';
+let period='week', filter='all';
 
 /* ---------- ads by window ---------- */
 const tasksByDct = {}, dctCount = {}; (D.tasks||[]).forEach(t=>{ if(!t.dct) return; dctCount[t.dct]=(dctCount[t.dct]||0)+1; if(!tasksByDct[t.dct]) tasksByDct[t.dct]=t; });
@@ -77,45 +87,69 @@ function adsFor(p){
     // A DCT number shared by two or more ClickUp tasks is ambiguous, so it is skipped.
     const t = t0 && (dctCount[a.dct]||0) < 2 && (a.dct>=TRACK_FROM || tcs || ted) ? t0 : null;
     a.task=t||null;
-    a.cs = (t && tcs) || (pk ? personId(pk.cs) : null);
-    a.ed = (t && ted) || (pk ? personId(pk.ed) : null);
+    a.cs = real(t && tcs) || (pk ? real(personId(pk.cs)) : null);
+    a.ed = real(t && ted) || (pk ? real(personId(pk.ed)) : null);
+    a.csFrom = real(t && tcs) ? 'ClickUp' : a.cs ? 'pick' : null;
+    a.edFrom = real(t && ted) ? 'ClickUp' : a.ed ? 'pick' : null;
     a.src = t ? 'ClickUp' : pk ? 'Saved pick' : null;
     a.unmatched = a.dct>=TRACK_FROM && !t;
   });
   list.sort((x,y)=>y.s-x.s);
-  return cache[p]={list,tot,bar,raw};
+  const all=list.slice(0,TOP_N[p]||9);   // only the top N ads by spend are analysed and shown
+  return cache[p]={list:all,full:list,tot,bar,raw};
 }
 const W = () => adsFor(period);
 const VCLS = {'Breakthrough':'bt','Spend Winner':'spend','KPI Winner':'kpi','Loser':'lose','Too early':'early'};
 const isFlag = a => ['Breakthrough','Spend Winner','KPI Winner'].includes(a.v);
 const attributedAd = a => !!(a.cs||a.ed);
 
+
 function renderWinners(){
-  const {list,tot,bar,raw}=W(), shown=list.filter(a=>a.s>=1500||isFlag(a));
-  const flagged=list.filter(isFlag);
-  const lst = wfilter==='win'?flagged : wfilter==='todo'?flagged.filter(a=>!attributedAd(a)) : wfilter==='unm'?list.filter(a=>a.unmatched) : shown;
-  const done=flagged.filter(attributedAd).length;
-  $('#pickCount').textContent=`${done} of ${flagged.length} winners attributed`;
-  $('#pickBar').style.width=flagged.length?(100*done/flagged.length)+'%':'0';
-  $('#flowPicks').textContent=`${done} of ${flagged.length} winners attributed`;
+  const {list,full,tot,bar,raw}=W(), N=TOP_N[period]||9;
+  const done=list.filter(a=>a.cs&&a.ed).length;
+  $('#pickCount').textContent=`${done} of ${list.length} ads fully credited`;
+  $('#pickBar').style.width=list.length?(100*done/list.length)+'%':'0';
+  $('#flowPicks').textContent=`${done} of ${list.length} top ads credited`;
   const n=v=>list.filter(a=>a.v===v).length;
-  $('#winSub').textContent=`${WIN[period].label}: ${money(tot)} spent across ${list.length} ads with $100+ spend. ROAS bar ${bar.toFixed(2)}`+
+  $('#winTitle').textContent=`Top ${N} ads by spend`;
+  $('#winSub').textContent=`${WIN[period].label}: ${money(tot)} spent across ${full.length} ads with $100+ spend. Showing the top ${list.length} by spend. ROAS bar ${bar.toFixed(2)}`+
     (raw<bar?` (top 20 ads blended ${raw.toFixed(2)}, so the ${FLOOR.toFixed(1)} floor applies)`:' (blended ROAS of the top 20 ads by spend)')+
-    `. ${n('Breakthrough')} Breakthrough, ${n('Spend Winner')} Spend Winner, ${n('KPI Winner')} KPI Winner, ${n('Too early')} too early.`;
-  $('#wgrid').innerHTML = lst.length ? lst.map(a=>{
+    `. In the top ${list.length}: ${n('Breakthrough')} Breakthrough, ${n('Spend Winner')} Spend Winner, ${n('KPI Winner')} KPI Winner, ${n('Too early')} too early.`;
+  const sel=(a,role,opts,cur)=>`<label class="pk"><span>${role}</span><select data-ad="${esc(a.name)}" data-role="${role}"><option value="">Pick…</option>${opts.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('')}</select></label>`;
+  $('#wgrid').innerHTML = list.length ? list.map((a,i)=>{
     const type=`<span class="pill ${VCLS[a.v]}">${a.v}</span>`+(a.v!=='Too early'?`<span class="pill ${a.prof?'prof':'unprof'}">${a.prof?'Profitable':'Unprofitable'}</span>`:'');
-    const who = a.unmatched ? `<div class="flag">DCT ${a.dct} spent money but no ClickUp task has DCT # ${a.dct}. Check the ad name or the task.</div>`
-      : a.task ? `<div class="owner"><span>CS ${esc(a.cs||'–')}</span><span>ED ${esc(a.ed||'–')}</span></div><div class="who">From ClickUp: <a href="${esc(a.task.url)}" target="_blank" rel="noopener">${esc(a.task.name)}</a></div>`
-      : attributedAd(a) ? `<div class="owner"><span>CS ${esc(a.cs||'–')}</span><span>ED ${esc(a.ed||'–')}</span></div><div class="who">Older ad with no ClickUp task. Credit saved earlier.</div>`
-      : `<div class="who">${a.dct?`No ClickUp task has DCT # ${a.dct}`:'No DCT number in the ad name'}, so nobody is credited yet.</div>`;
+    const fixed = a.csFrom==='ClickUp' && a.edFrom==='ClickUp';
+    const csPart = a.csFrom==='ClickUp' ? `<span>CS ${esc(a.cs)}</span>` : sel(a,'CS',CS_OPTS,a.cs);
+    const edPart = a.edFrom==='ClickUp' ? `<span>ED ${esc(a.ed)}</span>` : sel(a,'ED',ED_OPTS,a.ed);
+    const who = `<div class="owner picker">${csPart}${edPart}</div>`+
+      (a.task ? `<div class="who">From ClickUp: <a href="${esc(a.task.url)}" target="_blank" rel="noopener">${esc(a.task.name)}</a>${fixed?'':'. Pick whoever ClickUp is missing.'}</div>`
+      : `<div class="who">${a.unmatched?`DCT ${a.dct} has no ClickUp task. `:a.dct?`No ClickUp task for DCT # ${a.dct}. `:'No DCT number in the ad name. '}${a.cs&&a.ed?'Credit saved for everyone.':'Pick who made it. It saves for everyone.'}</div>`);
     const h=a.h>1?`<span>${a.h.toFixed(0)}%<em>hook</em></span>`:'';
-    return `<div class="ad ${attributedAd(a)?'ok':''}"><div class="body">
+    const md=mediaFor(a.name), href=md.preview;
+    const th=`<${href?`a href="${esc(href)}" target="_blank" rel="noopener" title="Open the ad preview"`:'div'} class="th${md.thumb?'':' blank'}"${md.thumb?` style="background-image:url('${esc(md.thumb)}')"`:''}>${md.thumb?'':`<b>${a.dct?'DCT '+a.dct:esc(a.name.slice(0,12))}</b>`}${a.video?'<i class="play">▶</i>':''}<span>#${i+1}</span></${href?'a':'div'}>`;
+    return `<div class="ad ${a.cs&&a.ed?'ok':''}">${th}<div class="body">
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${type}<span class="pill">${a.video?'Video':'Static'}</span></div>
-      <div class="nm">${esc(a.name)}</div>
-      ${LINKS[a.name]?`<a class="watch" href="${esc(LINKS[a.name])}" target="_blank" rel="noopener">▶ Watch the ad</a>`:`<span class="watch off">No preview link yet</span>`}
+      <div class="nm">${href?`<a href="${esc(href)}" target="_blank" rel="noopener">${esc(a.name)}</a>`:esc(a.name)}</div>
       <div class="mx"><span>${a.r.toFixed(2)}<em>ROAS</em></span><span>${money(a.s)}<em>spend</em></span><span>${a.p}<em>purch</em></span>${h}</div>
       ${who}</div></div>`; }).join('') : '<p class="note">Nothing here for this period.</p>';
 }
+$('#wgrid').addEventListener('change',async e=>{
+  const el=e.target; if(!el.matches('select[data-ad]')) return;
+  const name=el.dataset.ad, prev=Object.assign({},PICKS[name]||{});
+  const cur=Object.assign({},prev); if(el.dataset.role==='CS') cur.cs=el.value||undefined; else cur.ed=el.value||undefined;
+  ['cs','ed'].forEach(k=>{ if(!real(cur[k])) delete cur[k]; });
+  PICKS[name]=cur; Object.keys(cache).forEach(k=>delete cache[k]); renderAll();
+  toast(`Saving ${name}…`);
+  try{
+    const r=await fetch(PICK_HOOK+'?'+new URLSearchParams({ad:name,cs:cur.cs||'',ed:cur.ed||''}));
+    const j=await r.json().catch(()=>({ok:r.ok}));
+    if(!r.ok||j.ok===false) throw new Error(j.error||r.status);
+    toast(`Saved for everyone: ${name} · CS ${cur.cs||'–'} · ED ${cur.ed||'–'}`);
+  }catch(err){
+    PICKS[name]=prev; Object.keys(cache).forEach(k=>delete cache[k]); renderAll();
+    toast(`Could not save ${name}. Try again.`);
+  }
+});
 
 /* ---------- production (ClickUp tasks) ---------- */
 const ts = v => v ? new Date(isNaN(+v)?v:+v) : null;
@@ -246,7 +280,6 @@ function renderAll(){
 const PART=(D.weeks||[]).find(w=>w.week===LAST&&w.partial_through);
 $('#updated').textContent='Data updated '+new Date(D.generated_at).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'})+'.'+(PART?` This week is partial (Mon ${LAST.slice(8)} to ${PART.partial_through.slice(8)} Nov so far).`:'')+' Updates every Monday.';
 document.querySelectorAll('[data-f]').forEach(t=>t.addEventListener('click',()=>{filter=t.dataset.f;document.querySelectorAll('[data-f]').forEach(x=>x.setAttribute('aria-pressed',String(x===t)));renderCards();}));
-document.querySelectorAll('[data-w]').forEach(t=>t.addEventListener('click',()=>{wfilter=t.dataset.w;document.querySelectorAll('[data-w]').forEach(x=>x.setAttribute('aria-pressed',String(x===t)));renderWinners();}));
 document.querySelectorAll('.seg button').forEach(t=>{t.textContent=WIN[t.dataset.p].label;t.addEventListener('click',()=>{period=t.dataset.p;document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',String(x===t)));renderAll();});});
 renderAll();
 
