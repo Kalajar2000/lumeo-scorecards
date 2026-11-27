@@ -8,7 +8,7 @@
   const day = (s) => s ? s.slice(0, 10) : '';
 
   const LABEL = {
-    angle: { volume: 'Volume / load size', her: 'Her (partner)', age: 'Age / decline', hard: 'Harder / stamina', medical: 'Medical / condition', failed: 'Failed solutions', mechanism: 'Mechanism', timeline: 'Timeline / results', offer: 'Offer / urgency', gummy: 'Gummy format', proof: 'Proof / guarantee', untagged: 'Not tagged yet' },
+    angle: { volume: 'Volume / load size', her: 'Her (partner)', age: 'Age / decline', hard: 'Harder / stamina', medical: 'Medical / condition', failed: 'Failed solutions', mechanism: 'Mechanism', timeline: 'Timeline / results', offer: 'Offer / urgency', gummy: 'Gummy format', proof: 'Proof / guarantee', curiosity: 'Curiosity / pattern interrupt', taste: 'Taste / flavor', size: 'Size / girth', benefits: 'Product benefits', untagged: 'Not tagged yet' },
     format: { 'static-image': 'Static image', 'static-whiteboard': 'Static whiteboard', 'static-native': 'Static native (comment, screenshot)', animation: 'Animation / claymation', video: 'Video', 'creator-ugc': 'Creator UGC', ugc: 'UGC', 'ai-ugc': 'AI UGC', podcast: 'Podcast clip', 'talking-head': 'Talking head', untagged: 'Not tagged yet' },
     avatar: { 'faded-firehose': 'Faded Firehose', 'partner-pleaser': 'Partner Pleaser', amplifier: 'Amplifier', 'the-partner': 'The Partner', untagged: 'Not tagged yet' },
     verdict: { breakthrough: 'Breakthrough', 'spend-winner': 'Spend winner', 'kpi-winner': 'KPI winner', loser: 'Did not win', untested: 'Under test spend' }
@@ -159,7 +159,7 @@
   function how() {
     const tagged = (d) => C.filter((c) => c[d] && c[d] !== 'untagged').reduce((s, c) => s + c.spend, 0) / D.totals.spend;
     const src = {};
-    C.forEach((c) => { const t = c.tag_src || ''; const s = !c.angle || c.angle === 'untagged' ? 'No angle tag yet' : /keyword/.test(t) ? 'Angle from keyword match on the ad name (my read)' : /ClickUp/.test(t) && !/Statics|Live \(/.test(t) ? 'Angle from ClickUp fields' : 'Angle hand-tagged from Brief Queue notes or project docs'; src[s] = (src[s] || 0) + c.spend; });
+    C.forEach((c) => { const t = c.tag_src || ''; const s = !c.angle || c.angle === 'untagged' ? 'No angle tag yet' : /Claude/.test(t) ? 'Angle tagged by Claude from the ad copy and image in Ads Manager (my read)' : /keyword/.test(t) ? 'Angle from keyword match on the ad name (my read)' : /Ad set name/.test(t) && !/ClickUp|Brief|doc/i.test(t) ? 'Angle from the ad set name (A-, F-, PE- codes)' : /ClickUp/.test(t) && !/Statics|Live \(/.test(t) ? 'Angle from ClickUp fields' : 'Angle hand-tagged from Brief Queue notes or project docs'; src[s] = (src[s] || 0) + c.spend; });
     const guessed = C.filter((c) => /guessed/.test(c.tag_src || '')).reduce((s, c) => s + c.spend, 0) / D.totals.spend;
     $('#howbox').innerHTML = `
       <p><b>Data.</b> Spend, revenue and purchases per ad per day come from Meta (Facebook Insights through Make), for the Lumeo ad account and the VFO account. VFO ads before Sep 2026 are excluded because that account ran a different product then. The Lumeo 2.0 account only ran engagement ads, so it is left out, and so are ads named "Engagement". ROAS is Meta-reported (7-day click, 1-day view), not Triple Whale.</p>

@@ -1,47 +1,443 @@
 {
-  "_note": "Hand tags for concepts where a project file or the Brief Queue says what the ad is. src says where. Edit freely; the build keeps these over any rule.",
-  "#366": {"angle": "volume", "avatar": "faded-firehose", "format": "static-whiteboard", "desc": "Handmade whiteboard before/after. Biggest static spend.", "src": "Brief Queue Statics (DCT001, DCT018 notes)"},
-  "#358": {"angle": "offer", "avatar": "faded-firehose", "format": "video", "desc": "Offer + deadline as the whole message, FOMO line. Best video converter in Oct.", "src": "Brief Queue Statics (DCT002, DCT011 notes)"},
-  "#329": {"angle": "timeline", "avatar": "faded-firehose", "format": "animation", "desc": "Toy/Lego animation, day 1 / 4 / 10 / 14 progression.", "src": "Brief Queue Statics (DCT004), Live (DCT069, DCT095 notes)"},
-  "#332": {"angle": "mechanism", "avatar": "faded-firehose", "format": "animation", "desc": "Skeleton video. Later rewritten for post-vasectomy (DCT074).", "src": "Brief Queue Live (DCT074 note); angle is my read"},
-  "#7": {"angle": "age", "avatar": "faded-firehose", "format": "static-image", "desc": "Age 35 / 45 / 53 balloons.", "src": "Brief Queue Statics (DCT016 note)"},
-  "#192": {"angle": "volume", "avatar": "amplifier", "format": "static-image", "desc": "Yellow, '5 years of dribbling to 6ft ropes'.", "src": "Brief Queue Statics (DCT019 note)"},
-  "#392": {"angle": "timeline", "avatar": "amplifier", "format": "static-image", "desc": "Jars day 1-30 + 'obscene amount' quote.", "src": "Brief Queue Statics (DCT017 note)"},
-  "#290": {"angle": "failed", "avatar": "faded-firehose", "format": "static-image", "desc": "Counterfeit gummies (other brands are fake).", "src": "Brief Queue Statics (DCT022 'Counterfeit' image test)"},
-  "#470": {"angle": "proof", "avatar": "faded-firehose", "format": "static-image", "desc": "Refund letter (guarantee as proof).", "src": "Brief Queue Statics (DCT023 'RefundLetter' image test)"},
-  "#156": {"angle": "proof", "avatar": "amplifier", "format": "static-image", "desc": "'Horst' testimonial.", "src": "Brief Queue Statics (DCT024 'Horst' image test); angle is my read"},
-  "#422": {"angle": "her", "avatar": "partner-pleaser", "format": "animation", "desc": "Claymation story, the nurse.", "src": "Brief Queue Live (DCT128/129 notes); angle is my read"},
-  "#271": {"angle": "mechanism", "avatar": "faded-firehose", "format": "animation", "desc": "Skeleton (271HIT).", "src": "Brief Queue Live (DCT068 note)"},
-  "TEMPLATE# (3)": {"angle": "volume", "avatar": "amplifier", "format": "static-native", "desc": "Facebook-comment testimonial '4-5 ropes / 6ft ropes or your money back', wife and husband POV.", "src": "Doc 24 Ad Classification §1.1"},
-  "TEMPLATE# (6)": {"angle": "her", "avatar": "partner-pleaser", "format": "static-image", "desc": "'She accused me of having hyperspermia…' annotated callouts.", "src": "Doc 24 Ad Classification §1.1"},
-  "#81": {"angle": "volume", "avatar": "amplifier", "format": "static-image", "desc": "'+1.7 Tbsp of C*m or your money back', 40% off ends today.", "src": "Doc 24 Ad Classification §1.1"},
-  "#164": {"angle": "untagged", "avatar": "untagged", "format": "video", "desc": "Native campaign video, 1.93 ROAS in Jul-Aug.", "src": "Doc 25 Iteration Candidates ITER#4"},
-  "#115": {"angle": "untagged", "avatar": "untagged", "format": "video", "desc": ".mov video. Every iteration improved in Jul-Aug (1.47 to 1.94).", "src": "Doc 24 §3.1 / Doc 25 ITER#5"},
-  "#318": {"angle": "mechanism", "avatar": "faded-firehose", "format": "animation", "desc": "Skeleton iteration.", "src": "Brief Queue Live (DCT318)"},
-  "#326": {"angle": "mechanism", "avatar": "faded-firehose", "format": "video", "desc": "Hypovolemia.", "src": "Brief Queue Live (DCT326)"},
-  "#307": {"angle": "volume", "avatar": "amplifier", "format": "animation", "desc": "Claymation spill test.", "src": "Brief Queue Live (DCT307)"},
-  "#311": {"angle": "volume", "avatar": "amplifier", "format": "video", "desc": "Spill test.", "src": "Brief Queue Live (DCT311)"},
-  "#312": {"angle": "untagged", "avatar": "untagged", "format": "video", "desc": "Iteration of '61'.", "src": "Brief Queue Live (DCT312)"},
-  "#315": {"angle": "age", "avatar": "faded-firehose", "format": "video", "desc": "Old banana.", "src": "Brief Queue Live (DCT315); angle is my read"},
-  "#316": {"angle": "her", "avatar": "partner-pleaser", "format": "video", "desc": "Conversation.", "src": "Brief Queue Live (DCT316); angle is my read"},
-  "SAN-001": {"angle": "untagged", "avatar": "untagged", "format": "video", "desc": "216V1 x 100v3 iteration.", "src": "Brief Queue Live (DCT001)"},
-  "SAN-008": {"format": "video", "desc": "Casting call.", "src": "Brief Queue Live"},
-  "SAN-009": {"format": "video", "desc": "The ending.", "src": "Brief Queue Live"},
-  "SAN-010": {"angle": "age", "avatar": "faded-firehose", "format": "video", "desc": "Four signs.", "src": "Brief Queue Live; angle is my read"},
-  "SAN-011": {"angle": "her", "avatar": "partner-pleaser", "format": "video", "desc": "Her review.", "src": "Brief Queue Live; angle is my read"},
-  "SAN-012": {"format": "podcast", "desc": "Podcast clip.", "src": "Brief Queue Live"},
-  "SAN-013": {"angle": "mechanism", "format": "static-image", "desc": "W38 statics batch: Mechanism (X reasons why, myth vs fact).", "src": "Ad name"},
-  "SAN-014": {"angle": "age", "avatar": "faded-firehose", "format": "static-image", "desc": "W38 statics batch: Symptoms (X signs, breaking news).", "src": "Ad name; angle is my read"},
-  "SAN-015": {"angle": "failed", "format": "static-image", "desc": "W38 statics batch: Doses (new vs old, us vs them).", "src": "Ad name"},
-  "SAN-016": {"angle": "failed", "format": "static-image", "desc": "W38 statics batch: Refusal (don't buy this, tier list).", "src": "Ad name"},
-  "SAN-017": {"angle": "volume", "format": "static-image", "desc": "W38 statics batch: Outcome (transformation, hack, side effect).", "src": "Ad name"},
-  "SAN-018": {"angle": "volume", "avatar": "amplifier", "format": "static-image", "desc": "W38 statics batch: Sensation (venn diagram, claymation, text on skin).", "src": "Ad name"},
-  "SAN-019": {"angle": "her", "format": "static-image", "desc": "W38 statics batch: Occasion (in case of emergency).", "src": "Ad name; angle is my read"},
-  "SAN-020": {"angle": "proof", "format": "static-native", "desc": "W38 statics batch: Screenshot (IG story, text message, email).", "src": "Ad name"},
-  "SAN-021": {"angle": "proof", "format": "static-native", "desc": "W38 statics batch: Forum (Reddit, Google search).", "src": "Ad name"},
-  "SAN-022": {"format": "podcast", "desc": "W38 statics batch: Clip (AI podcast, greenscreen, zero stars).", "src": "Ad name"},
-  "SAN-023": {"angle": "volume", "format": "static-whiteboard", "desc": "W38 statics batch: Handmade (whiteboard, doodle, meme).", "src": "Ad name"},
-  "SAN-024": {"angle": "volume", "avatar": "amplifier", "format": "static-native", "desc": "W38 statics batch: Spill test native.", "src": "Ad name"},
-  "SAN-025": {"angle": "proof", "format": "static-image", "desc": "W38 statics batch: Proof (stat headline, testimonial, review wall).", "src": "Ad name"},
-  "SAN-026": {"angle": "offer", "format": "static-image", "desc": "W38 statics batch: Offer (stock alert, subscribe and save).", "src": "Ad name"}
+ "_note": "Hand tags for concepts where a project file or the Brief Queue says what the ad is. src says where. Edit freely; the build keeps these over any rule.",
+ "#366": {
+  "angle": "volume",
+  "avatar": "faded-firehose",
+  "format": "static-whiteboard",
+  "desc": "Handmade whiteboard before/after. Biggest static spend.",
+  "src": "Brief Queue Statics (DCT001, DCT018 notes)"
+ },
+ "#358": {
+  "angle": "offer",
+  "avatar": "faded-firehose",
+  "format": "video",
+  "desc": "Offer + deadline as the whole message, FOMO line. Best video converter in Oct.",
+  "src": "Brief Queue Statics (DCT002, DCT011 notes)"
+ },
+ "#329": {
+  "angle": "timeline",
+  "avatar": "faded-firehose",
+  "format": "animation",
+  "desc": "Toy/Lego animation, day 1 / 4 / 10 / 14 progression.",
+  "src": "Brief Queue Statics (DCT004), Live (DCT069, DCT095 notes)"
+ },
+ "#332": {
+  "angle": "mechanism",
+  "avatar": "faded-firehose",
+  "format": "animation",
+  "desc": "Skeleton video. Later rewritten for post-vasectomy (DCT074).",
+  "src": "Brief Queue Live (DCT074 note); angle is my read"
+ },
+ "#7": {
+  "angle": "age",
+  "avatar": "faded-firehose",
+  "format": "static-image",
+  "desc": "Age 35 / 45 / 53 balloons.",
+  "src": "Brief Queue Statics (DCT016 note)"
+ },
+ "#192": {
+  "angle": "volume",
+  "avatar": "amplifier",
+  "format": "static-image",
+  "desc": "Yellow, '5 years of dribbling to 6ft ropes'.",
+  "src": "Brief Queue Statics (DCT019 note)"
+ },
+ "#392": {
+  "angle": "timeline",
+  "avatar": "amplifier",
+  "format": "static-image",
+  "desc": "Jars day 1-30 + 'obscene amount' quote.",
+  "src": "Brief Queue Statics (DCT017 note)"
+ },
+ "#290": {
+  "angle": "failed",
+  "avatar": "faded-firehose",
+  "format": "static-image",
+  "desc": "Counterfeit gummies (other brands are fake).",
+  "src": "Brief Queue Statics (DCT022 'Counterfeit' image test)"
+ },
+ "#470": {
+  "angle": "proof",
+  "avatar": "faded-firehose",
+  "format": "static-image",
+  "desc": "Refund letter (guarantee as proof).",
+  "src": "Brief Queue Statics (DCT023 'RefundLetter' image test)"
+ },
+ "#156": {
+  "angle": "proof",
+  "avatar": "amplifier",
+  "format": "static-image",
+  "desc": "'Horst' testimonial.",
+  "src": "Brief Queue Statics (DCT024 'Horst' image test); angle is my read"
+ },
+ "#422": {
+  "angle": "her",
+  "avatar": "partner-pleaser",
+  "format": "animation",
+  "desc": "Claymation story, the nurse.",
+  "src": "Brief Queue Live (DCT128/129 notes); angle is my read"
+ },
+ "#271": {
+  "angle": "mechanism",
+  "avatar": "faded-firehose",
+  "format": "animation",
+  "desc": "Skeleton (271HIT).",
+  "src": "Brief Queue Live (DCT068 note)"
+ },
+ "TEMPLATE# (3)": {
+  "angle": "volume",
+  "avatar": "amplifier",
+  "format": "static-native",
+  "desc": "Facebook-comment testimonial '4-5 ropes / 6ft ropes or your money back', wife and husband POV.",
+  "src": "Doc 24 Ad Classification §1.1"
+ },
+ "TEMPLATE# (6)": {
+  "angle": "her",
+  "avatar": "partner-pleaser",
+  "format": "static-image",
+  "desc": "'She accused me of having hyperspermia…' annotated callouts.",
+  "src": "Doc 24 Ad Classification §1.1"
+ },
+ "#81": {
+  "angle": "volume",
+  "avatar": "amplifier",
+  "format": "static-image",
+  "desc": "'+1.7 Tbsp of C*m or your money back', 40% off ends today.",
+  "src": "Doc 24 Ad Classification §1.1"
+ },
+ "#164": {
+  "desc": "Native photo of a woman, 'Spill Test', Men's Health page; copy: she reacts to what it looks like after you fix the real problem",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "her",
+  "format": "static-native",
+  "avatar": "partner-pleaser"
+ },
+ "#115": {
+  "desc": "Video: 'How dads are shooting 6ft ropes in 2026', shirtless guy holding the pouch, squeeze-bottle b-roll.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "volume",
+  "format": "ugc",
+  "avatar": "amplifier"
+ },
+ "#318": {
+  "angle": "mechanism",
+  "avatar": "faded-firehose",
+  "format": "animation",
+  "desc": "Skeleton iteration.",
+  "src": "Brief Queue Live (DCT318)"
+ },
+ "#326": {
+  "angle": "mechanism",
+  "avatar": "faded-firehose",
+  "format": "video",
+  "desc": "Hypovolemia.",
+  "src": "Brief Queue Live (DCT326)"
+ },
+ "#307": {
+  "angle": "volume",
+  "avatar": "amplifier",
+  "format": "animation",
+  "desc": "Claymation spill test.",
+  "src": "Brief Queue Live (DCT307)"
+ },
+ "#311": {
+  "angle": "volume",
+  "avatar": "amplifier",
+  "format": "video",
+  "desc": "Spill test.",
+  "src": "Brief Queue Live (DCT311)"
+ },
+ "#312": {
+  "angle": "untagged",
+  "avatar": "untagged",
+  "format": "video",
+  "desc": "Iteration of '61'.",
+  "src": "Brief Queue Live (DCT312)"
+ },
+ "#315": {
+  "angle": "age",
+  "avatar": "faded-firehose",
+  "format": "video",
+  "desc": "Old banana.",
+  "src": "Brief Queue Live (DCT315); angle is my read"
+ },
+ "#316": {
+  "angle": "her",
+  "avatar": "partner-pleaser",
+  "format": "video",
+  "desc": "Conversation.",
+  "src": "Brief Queue Live (DCT316); angle is my read"
+ },
+ "SAN-001": {
+  "angle": "untagged",
+  "avatar": "untagged",
+  "format": "video",
+  "desc": "216V1 x 100v3 iteration.",
+  "src": "Brief Queue Live (DCT001)"
+ },
+ "SAN-008": {
+  "format": "video",
+  "desc": "Casting call.",
+  "src": "Brief Queue Live"
+ },
+ "SAN-009": {
+  "format": "video",
+  "desc": "The ending.",
+  "src": "Brief Queue Live"
+ },
+ "SAN-010": {
+  "angle": "age",
+  "avatar": "faded-firehose",
+  "format": "video",
+  "desc": "Four signs.",
+  "src": "Brief Queue Live; angle is my read"
+ },
+ "SAN-011": {
+  "angle": "her",
+  "avatar": "partner-pleaser",
+  "format": "video",
+  "desc": "Her review.",
+  "src": "Brief Queue Live; angle is my read"
+ },
+ "SAN-012": {
+  "format": "podcast",
+  "desc": "Podcast clip.",
+  "src": "Brief Queue Live"
+ },
+ "SAN-013": {
+  "angle": "mechanism",
+  "format": "static-image",
+  "desc": "W38 statics batch: Mechanism (X reasons why, myth vs fact).",
+  "src": "Ad name"
+ },
+ "SAN-014": {
+  "angle": "age",
+  "avatar": "faded-firehose",
+  "format": "static-image",
+  "desc": "W38 statics batch: Symptoms (X signs, breaking news).",
+  "src": "Ad name; angle is my read"
+ },
+ "SAN-015": {
+  "angle": "failed",
+  "format": "static-image",
+  "desc": "W38 statics batch: Doses (new vs old, us vs them).",
+  "src": "Ad name"
+ },
+ "SAN-016": {
+  "angle": "failed",
+  "format": "static-image",
+  "desc": "W38 statics batch: Refusal (don't buy this, tier list).",
+  "src": "Ad name"
+ },
+ "SAN-017": {
+  "angle": "volume",
+  "format": "static-image",
+  "desc": "W38 statics batch: Outcome (transformation, hack, side effect).",
+  "src": "Ad name"
+ },
+ "SAN-018": {
+  "angle": "volume",
+  "avatar": "amplifier",
+  "format": "static-image",
+  "desc": "W38 statics batch: Sensation (venn diagram, claymation, text on skin).",
+  "src": "Ad name"
+ },
+ "SAN-019": {
+  "angle": "her",
+  "format": "static-image",
+  "desc": "W38 statics batch: Occasion (in case of emergency).",
+  "src": "Ad name; angle is my read"
+ },
+ "SAN-020": {
+  "angle": "proof",
+  "format": "static-native",
+  "desc": "W38 statics batch: Screenshot (IG story, text message, email).",
+  "src": "Ad name"
+ },
+ "SAN-021": {
+  "angle": "proof",
+  "format": "static-native",
+  "desc": "W38 statics batch: Forum (Reddit, Google search).",
+  "src": "Ad name"
+ },
+ "SAN-022": {
+  "format": "podcast",
+  "desc": "W38 statics batch: Clip (AI podcast, greenscreen, zero stars).",
+  "src": "Ad name"
+ },
+ "SAN-023": {
+  "angle": "volume",
+  "format": "static-whiteboard",
+  "desc": "W38 statics batch: Handmade (whiteboard, doodle, meme).",
+  "src": "Ad name"
+ },
+ "SAN-024": {
+  "angle": "volume",
+  "avatar": "amplifier",
+  "format": "static-native",
+  "desc": "W38 statics batch: Spill test native.",
+  "src": "Ad name"
+ },
+ "SAN-025": {
+  "angle": "proof",
+  "format": "static-image",
+  "desc": "W38 statics batch: Proof (stat headline, testimonial, review wall).",
+  "src": "Ad name"
+ },
+ "SAN-026": {
+  "angle": "offer",
+  "format": "static-image",
+  "desc": "W38 statics batch: Offer (stock alert, subscribe and save).",
+  "src": "Ad name"
+ },
+ "#216": {
+  "desc": "Claymation: 'Why are women obsessed with a man that can shoot 6ft ropes?' Copy: say goodbye to 3-4 drop loads that annoy him.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "her",
+  "format": "animation",
+  "avatar": "partner-pleaser"
+ },
+ "#397": {
+  "desc": "Kitten pattern-interrupt opener, copy just 'aint he cute?'.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "curiosity",
+  "format": "video"
+ },
+ "#276": {
+  "desc": "AI skeleton video. Copy: from dribbles to 6ft ropes at 61, one gummy with morning coffee.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "volume",
+  "format": "animation",
+  "avatar": "faded-firehose"
+ },
+ "#61": {
+  "desc": "Black static 'I accidentally shot 6ft ropes at 52' with a list of things he didn't have to do, pouch on the right.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "volume",
+  "format": "static-image",
+  "avatar": "faded-firehose"
+ },
+ "TEMPLATE#": {
+  "desc": "'6FT ROPES (or your money back)' with a wife's Facebook-comment testimonial.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "volume",
+  "format": "static-native",
+  "avatar": "amplifier"
+ },
+ "a2": {
+  "desc": "Puppy pattern-interrupt photo, run from a 'Men's Health' page identity.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "curiosity",
+  "format": "static-image"
+ },
+ "#378": {
+  "desc": "Podcast clip (guy at mic) with fire-hydrant b-roll: 'more volume means bigger loads when you finish'.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "volume",
+  "format": "podcast",
+  "avatar": "amplifier"
+ },
+ "#4": {
+  "desc": "Expanding-brain meme: edging for hours, 12 supplements, then 6ft ropes from 2 gummies a day.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "failed",
+  "format": "static-image",
+  "avatar": "amplifier"
+ },
+ "#330": {
+  "desc": "Skeleton win variation (iteration of #332).",
+  "src": "Brief Queue Live (DCT330 SkeletonWinVariation)",
+  "angle": "mechanism",
+  "format": "animation",
+  "avatar": "faded-firehose"
+ },
+ "#3": {
+  "desc": "Two-panel meme: 'Her when your load is bitter and salty' vs 'when you taste like sweet candy'. Flavor Gummies campaign.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "taste",
+  "format": "static-image",
+  "avatar": "partner-pleaser"
+ },
+ "#15": {
+  "desc": "Ingredient callout static: 'Start Shooting 6ft Ropes', L-citrulline, zinc, pygeum, 2X volume guaranteed.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "mechanism",
+  "format": "static-image",
+  "avatar": "amplifier"
+ },
+ "#352": {
+  "desc": "Native photo of a nurse with a patient: 'I accidentally made a patient c*m when I was a CNA'.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "her",
+  "format": "static-native",
+  "avatar": "partner-pleaser"
+ },
+ "SANTI": {
+  "desc": "Female creator UGC: 'small loads' vs '6ft ropes' pour demo.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "her",
+  "format": "ugc",
+  "avatar": "partner-pleaser"
+ },
+ "#440": {
+  "desc": "Illustrated static: 'Shoot 7-8 spurts that leave her speechless', or we refund you and pay you for the time wasted.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "volume",
+  "format": "static-image",
+  "avatar": "amplifier"
+ },
+ "Creator: ConnorMatter": {
+  "desc": "Creator holding the pouch: 'Double discount, 4 left' scarcity video.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "offer",
+  "format": "creator-ugc"
+ },
+ "#401": {
+  "desc": "'4-5 ROPES (or your money back)' static, water-gun week 1 to 3 progression next to the pouch.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "timeline",
+  "format": "static-image",
+  "avatar": "amplifier"
+ },
+ "#391": {
+  "desc": "'Take care of your P*NIS' product static with benefit callouts (6ft ropes, thicker spurts, stronger orgasms, taste), run from 'Men's Health' page.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "benefits",
+  "format": "static-image",
+  "avatar": "amplifier"
+ },
+ "#390": {
+  "desc": "Kitten photo pattern-interrupt, copy just 'aint he cute?', from 'Men's Health' page.",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "curiosity",
+  "format": "static-image"
+ },
+ "AI SKELETON BROLL": {
+  "desc": "AI skeleton b-roll, same family as #332 and #276.",
+  "src": "Ad name, tagged by Claude (my read)",
+  "angle": "mechanism",
+  "format": "animation",
+  "avatar": "faded-firehose"
+ },
+ "#102": {
+  "desc": "Static, donut visual with quote 'That's an OBSCENE amount' from a woman; copy: watch her disappointment turn into a big smile",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "her",
+  "format": "static-image",
+  "avatar": "partner-pleaser"
+ },
+ "#58": {
+  "desc": "Text static '6ft Ropes in 30 days (or your money back), with mediocre genetics'",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "timeline",
+  "format": "static-image",
+  "avatar": "amplifier"
+ },
+ "#153": {
+  "desc": "Static 'From 3-4 drops to 6ft ropes in 3 weeks', woman's reaction Day 0 vs Day 21, Men's Health Insider page",
+  "src": "Ad copy and thumbnail in Ads Manager, tagged by Claude (my read)",
+  "angle": "timeline",
+  "format": "static-image",
+  "avatar": "partner-pleaser"
+ }
 }

@@ -114,6 +114,38 @@ def load_clickup():
         if t.get('dct'): out['#%d' % t['dct']] = t
     return out
 
+AS_ANGLE = {'size':'size','girth':'size','erection':'hard','lastlonger':'hard','confidence':'hard',
+ 'vasec':'medical','vasectomy':'medical','fin':'medical','finasteride':'medical','prostate':'medical','fertility':'medical','sperm':'medical','trtballs':'medical','fillballs':'medical',
+ 'fakes':'failed','tierlist':'failed','comparison':'failed','alternative':'failed','scam':'failed','failedsolutions':'failed',
+ 'impressher':'her','herdesire':'her','herdesires':'her','sexorloads':'her','caught':'her','apology':'her','hyperspermia':'her',
+ 'stopdribbling':'volume','dribblersad':'volume','small':'volume','smallloads':'volume','sadloads':'volume','biggerload':'volume','biggerloads':'volume','bigloads':'volume','shootropes':'volume','impressiveloadsfast':'volume',
+ 'dadloads':'age','agesymptoms':'age','age':'age','reviews':'proof','newmechanism':'mechanism','thatsit':'offer'}
+AS_FORMAT = {'static':'static-image','image':'static-image','timeline':'static-image','broll':'video','aibroll':'video','video':'video','sitcom':'video','song':'video','aisong':'video',
+ 'aiugc':'ai-ugc','animation':'animation','cartoon':'animation','pixar':'animation','zackdfilm':'animation','skellie':'animation','claymation':'animation','crochet':'animation','talkingobject':'animation','talkingobjects':'animation','objects':'animation',
+ 'pod':'podcast','podcast':'podcast'}
+AS_AVATAR = {'partner':'the-partner','dads':'faded-firehose','malevasectomy':'faded-firehose','bph':'faded-firehose','trt':'faded-firehose'}
+
+def adset_tags(name):
+    t = {}
+    m = re.search(r'/A-([a-z0-9]+)', name or '')
+    if m and AS_ANGLE.get(m.group(1)): t['angle'] = AS_ANGLE[m.group(1)]
+    m = re.search(r'/F-([a-z0-9]+)', name or '')
+    if m and AS_FORMAT.get(m.group(1)): t['format'] = AS_FORMAT[m.group(1)]
+    m = re.search(r'/PE-([a-z0-9]+)', name or '')
+    if m and AS_AVATAR.get(m.group(1)): t['avatar'] = AS_AVATAR[m.group(1)]
+    m = re.search(r'CS-([A-Za-z]+)', name or ''); 
+    if m: t['cs'] = m.group(1).title()
+    m = re.search(r'ED-([A-Za-z]+)', name or '')
+    if m: t['editor'] = m.group(1).title()
+    return t
+
+def load_adsets():
+    out = {}
+    for f in glob.glob(os.path.join(HERE, 'raw', 'names_*.json')):
+        for x in json.load(open(f)):
+            if len(x) > 10: out[x[0]] = (x[9], x[10])
+    return out
+
 def enrich(c, manual, queue, cu):
     k = c['key']; tag = dict(angle=None, avatar=None, format=None, desc='', src=[], cs='', editor='', concept='')
     q = queue.get(k)
@@ -130,6 +162,13 @@ def enrich(c, manual, queue, cu):
         if t.get('format'): tag['format'] = t['format'].split(',')[0].strip()
         tag['cs'] = tag['cs'] or (t.get('cs') or '').title(); tag['editor'] = tag['editor'] or (t.get('editor') or '')
         tag['src'].append('ClickUp')
+    at = c.get('adset_tags') or {}
+    if at:
+        used = False
+        for f in ('angle', 'format', 'avatar'):
+            if at.get(f) and not tag[f]: tag[f] = at[f]; used = True
+        tag['cs'] = tag['cs'] or at.get('cs', ''); tag['editor'] = tag['editor'] or at.get('editor', '')
+        if used: tag['src'].append('Ad set name')
     names = [re.split(r'_Lumeo', n)[0] for n in c['names']]
     text = ' '.join([(q or {}).get('text', ''), ' '.join(names)])
     if not tag['angle']:
@@ -174,15 +213,21 @@ def main():
     queue = load_queue(); cu = load_clickup()
 
     ads = {}
-    for acct, aid, name, d, sp, rev, pur, imp, v3, tp in rows:
+    for acct, aid, name, d, sp, rev, pur, imp, v3, tp, *_ in rows:
         a = ads.setdefault(aid, dict(id=aid, name=name, acct=acct, spend=0, rev=0, pur=0, imp=0, v3=0, tp=0, first=d, last=d))
         a['spend'] += sp; a['rev'] += rev; a['pur'] += pur; a['imp'] += imp; a['v3'] += v3; a['tp'] += tp
         a['first'] = min(a['first'], d); a['last'] = max(a['last'], d)
 
+    adsets = load_adsets()
     concepts = {}
     for a in ads.values():
         k = concept_key(a['name'])
-        c = concepts.setdefault(k, dict(key=k, spend=0, rev=0, purchases=0, imp=0, v3=0, tp=0, ads=0, names=collections.Counter(), first=a['first'], last=a['last'], accts=set()))
+        aset = adsets.get(a['id'], ('', ''))[0]
+        m = re.search(r'DCT#\s*(\d+)', aset)
+        if m and k in ('New Ad', 'Untitled'):
+            k = '#%d' % int(m.group(1))   # generic ad names: the ad set's DCT number is the concept
+        c = concepts.setdefault(k, dict(key=k, spend=0, rev=0, purchases=0, imp=0, v3=0, tp=0, ads=0, names=collections.Counter(), first=a['first'], last=a['last'], accts=set(), adsets=collections.Counter()))
+        if aset: c['adsets'][aset] += a['spend']
         c['spend'] += a['spend']; c['rev'] += a['rev']; c['purchases'] += a['pur']; c['imp'] += a['imp']; c['v3'] += a['v3']; c['tp'] += a['tp']
         c['ads'] += 1; c['names'][re.sub(r'\s*-\s*Copy.*$', '', a['name'])] += a['spend']
         c['first'] = min(c['first'], a['first']); c['last'] = max(c['last'], a['last']); c['accts'].add(a['acct'])
@@ -193,7 +238,11 @@ def main():
         c['roas'] = c['rev'] / c['spend'] if c['spend'] else 0
         c['verdict'] = verdict(c)
         hooks = [n for n, _ in c['names'].most_common(12)]
-        t = enrich(dict(c, names=hooks), manual, queue, cu)
+        at = {}
+        for aset, _ in c['adsets'].most_common():
+            at = adset_tags(aset)
+            if at.get('angle') or at.get('format'): break
+        t = enrich(dict(c, names=hooks, adset_tags=at), manual, queue, cu)
         out.append(dict(
             key=c['key'], spend=round(c['spend'], 2), revenue=round(c['rev'], 2), roas=round(c['roas'], 3),
             purchases=int(c['purchases']), cpa=round(c['spend'] / c['purchases'], 2) if c['purchases'] else None,
