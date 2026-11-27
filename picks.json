@@ -1,10 +1,11 @@
 {
   "_note": "Manual attribution for ads that are not tracked through ClickUp (DCT under the tracked line). Key = exact Meta ad name. cs/ed = person id as on the cards.",
-  "DCT#366-H5 - Copy": {"cs": "Joel", "ed": "Other"},
-  "DCT#457-H1": {"cs": "Joel", "ed": "Daly"},
-  "DCT#307-H1": {"cs": "Other", "ed": "Hamid"},
-  "DCT#307-H3": {"cs": "Other", "ed": "Hamid"},
-  "DCT#484-H2": {"cs": "Joel", "ed": "Hamid"},
-  "CS-victor [DCT#011-H3]": {"cs": "Victor", "ed": "Other"},
-  "Alex_DCT#009_V2_H3": {"cs": "Alex"}
+  "DCT#366-H5 - Copy": {"cs":"Joel","ed":"Other"},
+  "DCT#457-H1": {"cs":"Joel","ed":"Daly"},
+  "DCT#307-H1": {"cs":"Other","ed":"Hamid"},
+  "DCT#307-H3": {"cs":"Other","ed":"Hamid"},
+  "DCT#484-H2": {"cs":"Joel","ed":"Hamid"},
+  "CS-victor [DCT#011-H3]": {"cs":"Victor","ed":"Other"},
+  "Alex_DCT#009_V2_H3": {"cs":"Alex"},
+  "ZZ TEST": {"cs":"Joel","ed":"Hamid"}
 }
