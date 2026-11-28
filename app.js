@@ -102,6 +102,15 @@ const K = () => winFor(period).kind;
 const SHORT = () => WIN[period].days<=7 && K()!=='life';   // day or week sized window
 
 /* ---------- ads by window ---------- */
+function briefDate(t){
+  if(t.started) return new Date(+t.started);
+  const m=/_W(\d{1,2})_/.exec(t.name||'');
+  if(m){ const y=new Date(+t.created||Date.now()).getUTCFullYear(), j4=new Date(Date.UTC(y,0,4)), d=(j4.getUTCDay()+6)%7;
+    return new Date(j4.getTime()-d*864e5+(+m[1]-1)*7*864e5); }
+  return t.created ? new Date(+t.created) : null;
+}
+function adFitsBrief(name,t){ const b=briefDate(t), f=firstSeen[name]; if(!b||!f) return true;
+  return new Date(f+'T00:00:00Z').getTime() >= b.getTime()-3*864e5; }
 const tasksByDct = {}, dctCount = {}; (D.tasks||[]).forEach(t=>{ if(!t.dct) return; dctCount[t.dct]=(dctCount[t.dct]||0)+1; if(!tasksByDct[t.dct]) tasksByDct[t.dct]=t; });
 const firstSeen = {}, seen=(n,d)=>{ if(!firstSeen[n]||d<firstSeen[n]) firstSeen[n]=d; };
 (D.ad_weekly||[]).forEach(r=>seen(r.ad,r.week));
@@ -198,7 +207,9 @@ function adsFor(p){
     const pk = pickFor(a.name);
     const tcs = t0 ? personId(t0.cs) : null, ted = t0 ? personId(t0.editor) : null;
     // A DCT number shared by two or more ClickUp tasks is ambiguous, so it is skipped.
-    const t = t0 && (dctCount[a.dct]||0) < 2 && (a.dct>=TRACK_FROM || tcs || ted) ? t0 : null;
+    // DCT numbers under TRACK_FROM were reused (old ads 1..765 vs new briefs), so an ad only counts for the task
+    // when it first spent on or after the brief date minus 3 days (brief date = Started, else the name's W-week Monday, else Created).
+    const t = t0 && (dctCount[a.dct]||0) < 2 && (a.dct>=TRACK_FROM || tcs || ted) && (a.dct>=TRACK_FROM || adFitsBrief(a.name,t0)) ? t0 : null;
     a.task=t||null;
     a.cs = real(t && tcs) || (pk ? real(personId(pk.cs)) : null);
     a.ed = real(t && ted) || (pk ? real(personId(pk.ed)) : null);
